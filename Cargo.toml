@@ -1,0 +1,15 @@
+[package]
+name = "calc"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+regex = "1.10.5"
+variant_count = "1.1.0"
+rustyline = "14.0.0"
+thiserror = "1.0.61"
+directories = "5.0.1"
+ureq = "2.9.7"
+quick-xml = { version = "0.32.0", features = ["serde", "serialize"] }
+serde = { version = "1.0.203", features = ["derive"] }
+chrono = { version = "0.4.38", features = ["serde"] }
