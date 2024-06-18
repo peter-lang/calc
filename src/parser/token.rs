@@ -45,6 +45,7 @@ pub enum Token {
     VolMilliLiter, // ml
     VolPint,       // pt, pint
     VolGallon,     // gal, gallon
+    VolCup,        // cup
 
     MassG,     // g
     MassKg,    // kg

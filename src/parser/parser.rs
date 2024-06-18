@@ -331,6 +331,7 @@ impl Parser {
             Token::VolYard => Some(Unit::VolYard),
             Token::VolPint => Some(Unit::VolPint),
             Token::VolGallon => Some(Unit::VolGallon),
+            Token::VolCup => Some(Unit::VolCup),
             Token::MassG => Some(Unit::MassG),
             Token::MassKg => Some(Unit::MassKg),
             Token::MassOunce => Some(Unit::MassOunce),

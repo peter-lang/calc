@@ -14,15 +14,23 @@ impl Display for Number {
         fn float_fmt(res: f64, f: &mut Formatter<'_>) -> std::fmt::Result {
             let res_abs = res.abs();
             if res_abs >= 1e9 || res_abs < 1e-3 {
-                write!(f, "{:.3e}", res)
+                write!(f, "{:.6e}", res)
             } else if res_abs >= 1e6 {
-                write!(f, "{}m", (res / 1e3).trunc() / 1e3)
+                let rounded = (res / 1e3).round() / 1e3;
+                let postfix = if rounded == res / 1e6 { "" } else { ".." };
+                write!(f, "{}{}m", rounded, postfix)
             } else if res_abs >= 1e3 {
-                write!(f, "{}k", res.trunc() / 1e3)
+                let rounded = res.round() / 1e3;
+                let postfix = if rounded == res / 1e3 { "" } else { ".." };
+                write!(f, "{}{}k", rounded, postfix)
             } else if res_abs >= 1. {
-                write!(f, "{}", (res * 1e3).trunc() / 1e3)
+                let rounded = (res * 1e3).round() / 1e3;
+                let postfix = if rounded == res { "" } else { ".." };
+                write!(f, "{}{}", rounded, postfix)
             } else {
-                write!(f, "{}", (res * 1e6).trunc() / 1e6)
+                let rounded = (res * 1e6).round() / 1e6;
+                let postfix = if rounded == res { "" } else { ".." };
+                write!(f, "{}{}", rounded, postfix)
             }
         }
         match self {

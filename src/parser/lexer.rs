@@ -51,6 +51,7 @@ static PATTERNS: [(&'static str, fn(&str) -> Token); Token::VARIANT_COUNT] = [
     ("ft3", |_| Token::VolFeet),
     ("yd3", |_| Token::VolYard),
     ("gallon|gal", |_| Token::VolGallon),
+    ("cup", |_| Token::VolCup),
     ("km2", |_| Token::AreaKm),
     ("cm2", |_| Token::AreaCm),
     ("mm2", |_| Token::AreaMm),

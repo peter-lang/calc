@@ -46,6 +46,7 @@ pub enum Unit {
     VolYard,       // yd3
     VolPint,       // pt, pint
     VolGallon,     // gal, gallon
+    VolCup,        // cup
 
     MassG,     // g
     MassKg,    // kg
@@ -102,8 +103,9 @@ pub fn get_default_factor(a: &Unit) -> Result<Number, CalcError> {
         Unit::VolYard => wrap((YARD2INCH * INCH2M).pow(3) * _1000),
         Unit::VolMilliLiter => wrap(_1_1000),
         Unit::VolLiter => wrap(_1),
-        Unit::VolPint => wrap(Rational::new(454609, 800000)),
-        Unit::VolGallon => wrap(Rational::new(454609, 100000)),
+        Unit::VolPint => wrap(Rational::new(3785411784, 8000000000)),
+        Unit::VolGallon => wrap(Rational::new(3785411784, 1000000000)),
+        Unit::VolCup => wrap(Rational::new(3785411784, 16000000000)),
         Unit::MassG => wrap(_1_1000),
         Unit::MassKg => wrap(_1),
         Unit::MassOunce => wrap(Rational::new(45359237, 800000000)),
@@ -146,6 +148,7 @@ pub fn get_unit_name(a: &Unit) -> &str {
         Unit::VolYard => "yd3",
         Unit::VolPint => "pint",
         Unit::VolGallon => "gallon",
+        Unit::VolCup => "cup",
         Unit::MassG => "g",
         Unit::MassKg => "kg",
         Unit::MassOunce => "oz",
@@ -187,6 +190,7 @@ pub fn get_unit_type(a: &Unit) -> UnitType {
         Unit::VolYard => UnitType::Volume,
         Unit::VolPint => UnitType::Volume,
         Unit::VolGallon => UnitType::Volume,
+        Unit::VolCup => UnitType::Volume,
         Unit::MassG => UnitType::Mass,
         Unit::MassKg => UnitType::Mass,
         Unit::MassOunce => UnitType::Mass,
