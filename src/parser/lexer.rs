@@ -42,7 +42,7 @@ static PATTERNS: [(&'static str, fn(&str) -> Token); Token::VARIANT_COUNT] = [
     ("%", |_| Token::Mod),
     ("to", |_| Token::KwTo),
     (CURRENCIES_PATTERN, |x| {
-        Token::Curr(String::from(x.to_ascii_lowercase()))
+        Token::Curr(String::from(x.to_ascii_uppercase()))
     }),
     // 3 char
     ("cm3", |_| Token::VolCm),
@@ -111,7 +111,7 @@ impl Lexer {
         return Token::INVALID(String::from(""));
     }
 
-    pub fn parse<'a>(&'a self, text: &'a str) -> impl Iterator<Item = Token> + 'a {
+    pub fn parse<'a>(&'a self, text: &'a str) -> impl Iterator<Item=Token> + 'a {
         self.patterns.captures_iter(text).map(Lexer::map_captures)
     }
 }

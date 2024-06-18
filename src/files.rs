@@ -13,6 +13,6 @@ pub fn cache(name: impl AsRef<Path>) -> PathBuf {
         }
         path
     })
-    .cache_dir()
-    .join(name)
+        .cache_dir()
+        .join(name)
 }

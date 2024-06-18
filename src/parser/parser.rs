@@ -32,7 +32,7 @@ impl Parser {
         self.tokens.is_empty()
     }
 
-    pub fn extend(&mut self, tokens: impl IntoIterator<Item = Token>) {
+    pub fn extend(&mut self, tokens: impl IntoIterator<Item=Token>) {
         self.tokens.extend(tokens);
     }
 
@@ -116,9 +116,9 @@ impl Parser {
     fn num_unit_inner(&mut self, pos: usize) -> Match<Node> {
         if let Match::Ok(
             Node::Value(Value {
-                num: lhs_num,
-                unit: Some(lhs_unit),
-            }),
+                            num: lhs_num,
+                            unit: Some(lhs_unit),
+                        }),
             pos,
         ) = self.num_unit(pos)
         {

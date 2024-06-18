@@ -65,9 +65,9 @@ pub enum Token {
 }
 
 pub const CURRENCIES: [&'static str; 34] = [
-    "aud", "bgn", "brl", "cad", "chf", "cny", "czk", "dkk", "eur", "gbp", "hkd", "huf", "idr",
-    "ils", "inr", "isk", "jpy", "krw", "mxn", "myr", "nok", "nzd", "php", "pln", "ron", "rsd",
-    "rub", "sek", "sgd", "thb", "try", "uah", "usd", "zar",
+    "AUD", "BGN", "BRL", "CAD", "CHF", "CNY", "CZK", "DKK", "EUR", "GBP", "HKD", "HUF", "IDR",
+    "ILS", "INR", "ISK", "JPY", "KRW", "MXN", "MYR", "NOK", "NZD", "PHP", "PLN", "RON", "RSD",
+    "RUB", "SEK", "SGD", "THB", "TRY", "UAH", "USD", "ZAR",
 ];
 
 // TODO: this should come from a macro

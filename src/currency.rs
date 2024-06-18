@@ -16,6 +16,7 @@ struct GetCurrentExchangeRatesResponse {
     #[serde(rename = "GetCurrentExchangeRatesResult")]
     get_current_exchange_rates_result: String,
 }
+
 #[derive(Deserialize)]
 struct Body {
     #[serde(rename = "GetCurrentExchangeRatesResponse")]
@@ -29,8 +30,8 @@ struct Envelope {
 }
 
 fn deserialize_rate<'de, D>(deserializer: D) -> Result<Rational, D::Error>
-where
-    D: Deserializer<'de>,
+    where
+        D: Deserializer<'de>,
 {
     let buf = String::deserialize(deserializer)?;
     let trimmed = buf.trim_end_matches('0');
@@ -84,6 +85,7 @@ fn fetch_current_rate_xml() -> Result<String, CalcError> {
 }
 
 const RATE_FILE_NAME: &str = "rates.xml";
+
 fn save_current_rate_xml_file(xml: &str) -> () {
     let file = files::cache(RATE_FILE_NAME);
     let _ = fs::write(file, xml);
@@ -102,10 +104,10 @@ fn to_map(rates: Vec<MNBCurrentExchangeRate>) -> HashMap<String, Rational> {
         .into_iter()
         .map(|x| {
             if x.unit == 1 {
-                (x.curr.to_ascii_lowercase(), x.rate)
+                (x.curr.to_ascii_uppercase(), x.rate)
             } else {
                 (
-                    x.curr.to_ascii_lowercase(),
+                    x.curr.to_ascii_uppercase(),
                     x.rate / Rational::new(x.unit as i64, 1),
                 )
             }
@@ -132,7 +134,7 @@ pub fn convert(from: &str, to: &str) -> Result<Rational, CalcError> {
         })
         .as_ref()?;
 
-    const BASE_CURRENCY: &'static str = "huf";
+    const BASE_CURRENCY: &'static str = "HUF";
     return if from == BASE_CURRENCY {
         let Some(inv_rate) = map.get(to) else {
             return Err(CalcError::ConversionError);

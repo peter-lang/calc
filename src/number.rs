@@ -17,27 +17,26 @@ impl Display for Number {
                 write!(f, "{:.6e}", res)
             } else if res_abs >= 1e6 {
                 let rounded = (res / 1e3).round() / 1e3;
-                let postfix = if rounded == res / 1e6 { "" } else { ".." };
-                write!(f, "{}{}m", rounded, postfix)
+                write!(f, "{}m", rounded)
             } else if res_abs >= 1e3 {
                 let rounded = res.round() / 1e3;
-                let postfix = if rounded == res / 1e3 { "" } else { ".." };
-                write!(f, "{}{}k", rounded, postfix)
+                write!(f, "{}k", rounded)
             } else if res_abs >= 1. {
                 let rounded = (res * 1e3).round() / 1e3;
-                let postfix = if rounded == res { "" } else { ".." };
+                let postfix = if rounded == res { "" } else { "…" };
                 write!(f, "{}{}", rounded, postfix)
             } else {
                 let rounded = (res * 1e6).round() / 1e6;
-                let postfix = if rounded == res { "" } else { ".." };
+                let postfix = if rounded == res { "" } else { "…" };
                 write!(f, "{}{}", rounded, postfix)
             }
         }
         match self {
             Number::Int(res) => {
                 let res_abs = res.abs();
-                if res_abs >= 1_000_000 && res_abs % 1_000_000 == 0 {
-                    write!(f, "{}m", res / 1_000_000)
+                if res_abs >= 1_000_000 {
+                    let rounded = ((*res as f64) / 1e3).round() / 1e3;
+                    write!(f, "{}m", rounded)
                 } else if res_abs >= 1_000 && res_abs % 1_000 == 0 {
                     write!(f, "{}k", res / 1_000)
                 } else {

@@ -210,7 +210,7 @@ fn convert_temp(val: Number, from: &Unit, to: &Unit) -> Result<Number, CalcError
     match (from, to) {
         (Unit::TempC, Unit::TempF) => return Ok(number_op::add(number_op::mul(val, FACTOR), BIAS)),
         (Unit::TempF, Unit::TempC) => {
-            return Ok(number_op::div(number_op::sub(val, BIAS), FACTOR)?)
+            return Ok(number_op::div(number_op::sub(val, BIAS), FACTOR)?);
         }
         (_, _) => Err(CalcError::ConversionError),
     }
