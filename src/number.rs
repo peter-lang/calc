@@ -11,10 +11,36 @@ pub enum Number {
 
 impl Display for Number {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        fn float_fmt(res: f64, f: &mut Formatter<'_>) -> std::fmt::Result {
+            let res_abs = res.abs();
+            if res_abs >= 1e9 || res_abs < 1e-3 {
+                write!(f, "{:.3e}", res)
+            } else if res_abs >= 1e6 {
+                write!(f, "{}m", (res / 1e3).trunc() / 1e3)
+            } else if res_abs >= 1e3 {
+                write!(f, "{}k", res.trunc() / 1e3)
+            } else if res_abs >= 1. {
+                write!(f, "{}", (res * 1e3).trunc() / 1e3)
+            } else {
+                write!(f, "{}", (res * 1e6).trunc() / 1e6)
+            }
+        }
         match self {
-            Number::Int(x) => write!(f, "{}", x),
-            Number::Rational(x) => write!(f, "{}", x),
-            Number::Float(x) => write!(f, "{}", x),
+            Number::Int(res) => {
+                let res_abs = res.abs();
+                if res_abs >= 1_000_000 && res_abs % 1_000_000 == 0 {
+                    write!(f, "{}m", res / 1_000_000)
+                } else if res_abs >= 1_000 && res_abs % 1_000 == 0 {
+                    write!(f, "{}k", res / 1_000)
+                } else {
+                    write!(f, "{}", res)
+                }
+            }
+            Number::Rational(x) => {
+                let res: f64 = x.into();
+                float_fmt(res, f)
+            }
+            Number::Float(res) => float_fmt(*res, f),
         }
     }
 }

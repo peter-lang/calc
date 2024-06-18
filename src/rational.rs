@@ -86,6 +86,12 @@ impl From<i64> for Rational {
     }
 }
 
+impl Into<f64> for &Rational {
+    fn into(self) -> f64 {
+        (self.num as f64) / (self.den as f64)
+    }
+}
+
 impl Into<f64> for Rational {
     fn into(self) -> f64 {
         (self.num as f64) / (self.den as f64)

@@ -8,11 +8,29 @@ pub struct Lexer {
 
 static PATTERNS: [(&'static str, fn(&str) -> Token); Token::VARIANT_COUNT] = [
     (
-        r"(?:(?:[0-9]*\.[0-9]+)|(?:[0-9]+\.))(?:[eE][-+]?[0-9]+)?",
-        |x| Token::LitFloat(x.parse::<f64>().unwrap()),
+        r"(?:(?:[0-9]*\.[0-9]+)|(?:[0-9]+\.))(?:[eE][-+]?[0-9]+|kk|k|m)?|[0-9]+[eE][-+]?[0-9]+",
+        |x| {
+            if x.ends_with("kk") {
+                Token::LitFloat(x[..(x.len() - 2)].parse::<f64>().unwrap() * 1e6)
+            } else if x.ends_with("m") {
+                Token::LitFloat(x[..(x.len() - 1)].parse::<f64>().unwrap() * 1e6)
+            } else if x.ends_with("k") {
+                Token::LitFloat(x[..(x.len() - 1)].parse::<f64>().unwrap() * 1e3)
+            } else {
+                Token::LitFloat(x.parse::<f64>().unwrap())
+            }
+        },
     ),
-    (r"[0-9]+(?:[eE][-+]?[0-9]+)?", |x| {
-        Token::LitInt(x.parse::<i64>().unwrap())
+    (r"[0-9]+(?:kk|k|m)?", |x| {
+        if x.ends_with("kk") {
+            Token::LitInt(x[..(x.len() - 2)].parse::<i64>().unwrap() * 1_000_000)
+        } else if x.ends_with("m") {
+            Token::LitInt(x[..(x.len() - 1)].parse::<i64>().unwrap() * 1_000_000)
+        } else if x.ends_with("k") {
+            Token::LitInt(x[..(x.len() - 1)].parse::<i64>().unwrap() * 1_000)
+        } else {
+            Token::LitInt(x.parse::<i64>().unwrap())
+        }
     }),
     (r"\(", |_| Token::ParBegin),
     (r"\)", |_| Token::ParEnd),

@@ -1,12 +1,7 @@
 use std::env;
-use std::ops::Add;
 
-use rustyline::config::Configurer;
 use rustyline::DefaultEditor;
 use rustyline::error::ReadlineError;
-use rustyline::history::History;
-use serde::{Deserialize, Deserializer};
-use ureq::OrAnyStatus;
 
 use crate::error::CalcError;
 use crate::parser::lexer::Lexer;

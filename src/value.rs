@@ -12,7 +12,7 @@ pub struct Value {
 impl Display for Value {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         if let Some(unit) = &self.unit {
-            write!(f, "{}{}", self.num, get_unit_name(unit))
+            write!(f, "{} {}", self.num, get_unit_name(unit))
         } else {
             write!(f, "{}", self.num)
         }
