@@ -1,6 +1,6 @@
-use variant_count::VariantCount;
+use strum::EnumCount;
 
-#[derive(PartialEq, VariantCount)]
+#[derive(PartialEq, EnumCount)]
 pub enum Token {
     ParBegin, // (
     ParEnd,   // )

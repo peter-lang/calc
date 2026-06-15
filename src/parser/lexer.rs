@@ -1,4 +1,5 @@
 use regex::{Captures, Regex};
+use strum::EnumCount;
 
 use super::token::{CURRENCIES_PATTERN, Token};
 
@@ -6,7 +7,7 @@ pub struct Lexer {
     patterns: Regex,
 }
 
-static PATTERNS: [(&'static str, fn(&str) -> Token); Token::VARIANT_COUNT] = [
+static PATTERNS: [(&'static str, fn(&str) -> Token); Token::COUNT] = [
     (
         r"(?:(?:[0-9]*\.[0-9]+)|(?:[0-9]+\.))(?:[eE][-+]?[0-9]+|kk|k|m)?|[0-9]+[eE][-+]?[0-9]+",
         |x| {
@@ -100,7 +101,7 @@ impl Lexer {
     }
 
     fn map_captures(captures: Captures) -> Token {
-        for idx in 1..=Token::VARIANT_COUNT {
+        for idx in 1..=Token::COUNT {
             if let Some(m) = captures.get(idx) {
                 let found = m.as_str();
                 let (_, extract) = PATTERNS[idx - 1];
