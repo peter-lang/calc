@@ -7,7 +7,8 @@
 //! The currency path is excluded because it depends on the network / a live
 //! MNB feed; see the ignored `currency_smoke` test at the bottom.
 
-use std::process::Command;
+use std::io::Write;
+use std::process::{Command, Stdio};
 
 /// Run the built binary in one-shot mode with a single expression argument and
 /// return its trimmed stdout.
@@ -20,6 +21,31 @@ fn eval(expr: &str) -> String {
         output.status.success(),
         "calc exited with failure for {expr:?}"
     );
+    String::from_utf8(output.stdout)
+        .expect("stdout was not utf-8")
+        .trim_end()
+        .to_string()
+}
+
+/// Drive the interactive REPL: feed `input` on stdin (each line is one REPL
+/// entry) and return trimmed stdout. HOME is redirected to a throwaway dir so
+/// the REPL's history cache never touches the real one.
+fn eval_repl(input: &str) -> String {
+    let home = std::env::temp_dir().join("calc-repl-test-home");
+    let mut child = Command::new(env!("CARGO_BIN_EXE_calc"))
+        .env("HOME", &home)
+        .env_remove("XDG_CACHE_HOME")
+        .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        .spawn()
+        .expect("failed to spawn calc REPL");
+    child
+        .stdin
+        .take()
+        .expect("no stdin")
+        .write_all(input.as_bytes())
+        .expect("failed to write stdin");
+    let output = child.wait_with_output().expect("failed to wait for REPL");
     String::from_utf8(output.stdout)
         .expect("stdout was not utf-8")
         .trim_end()
@@ -150,6 +176,14 @@ fn unparseable_input_produces_no_output() {
     // `%` is tokenized but has no grammar rule, so the expression fails to parse
     // and nothing is printed. Documents current behaviour.
     assert_eq!(eval("10 % 3"), "");
+}
+
+#[test]
+fn repl_evaluates_lines_and_continues_incomplete_input() {
+    // three complete entries, then an expression split across two lines (the
+    // open paren keeps the parser waiting until it is closed).
+    let out = eval_repl("2 + 2\n1/2 + 1/3\n(2 +\n3)\n");
+    assert_eq!(out, "4\n0.833333…\n5");
 }
 
 /// Currency conversion hits the live MNB feed (or a same-day cache) and is not

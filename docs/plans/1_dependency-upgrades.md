@@ -4,7 +4,9 @@
 community standards, accepting breaking changes and fixing the resulting
 breakage. Work **one dependency at a time**, verifying after each.
 
-**Status:** in progress (paused). See [Progress](#progress) at the bottom.
+**Status:** ✅ complete — all dependencies upgraded; toolchain bumped to 1.96;
+build clean (0 warnings); 19 tests pass (+1 ignored network test). See
+[Progress](#progress).
 
 Plans in `docs/plans/` are numbered by priority; this is priority 1.
 
@@ -142,7 +144,8 @@ Semver-compatible, no source changes. Grouped because none can break.
 - [x] Step 6: `ureq` 2 → 3 — `.set`→`.header`, `.send_bytes`→`.send`,
       `into_reader`→`body_mut().as_reader()`; `#[from] ureq::Error` still works.
       Fresh fetch + cached read validated against the live MNB feed.
-- [ ] Step 7: `rustyline` 14 → 18
+- [x] Step 7: `rustyline` 14 → 18 — no source changes; added an isolated REPL
+      integration test (line evaluation + multiline continuation) covering the
+      previously-untested interactive path.
 
-> Resume point: commit the prerequisite test fix and Step 1 (currently staged in
-> the working tree), then continue from Step 2.
+> Done. All steps complete and committed.
