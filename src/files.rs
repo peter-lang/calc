@@ -1,18 +1,15 @@
 use std::fs;
 use std::path::{Path, PathBuf};
-use std::sync::OnceLock;
 
-use directories::ProjectDirs;
+use etcetera::{choose_base_strategy, BaseStrategy};
 
-pub fn cache(name: impl AsRef<Path>) -> PathBuf {
-    static DIRS: OnceLock<ProjectDirs> = OnceLock::new();
-    DIRS.get_or_init(|| {
-        let path = ProjectDirs::from_path(PathBuf::from("calc")).unwrap();
-        if !path.cache_dir().exists() {
-            fs::create_dir_all(path.cache_dir()).unwrap();
-        }
-        path
-    })
-        .cache_dir()
-        .join(name)
+use crate::error::CalcError;
+
+pub fn cache(name: impl AsRef<Path>) -> Result<PathBuf, CalcError> {
+    let strategy = choose_base_strategy().map_err(|_| CalcError::HomeDirNotFound)?;
+    let dir = strategy.cache_dir().join("calc");
+    if !dir.exists() {
+        fs::create_dir_all(&dir)?;
+    }
+    Ok(dir.join(name))
 }

@@ -14,6 +14,8 @@ pub enum CalcError {
     ConversionError,
     #[error("Missing unit")]
     MissingUnit,
+    #[error("Could not determine a cache directory (no home directory)")]
+    HomeDirNotFound,
     #[error(transparent)]
     RequestError(#[from] ureq::Error),
     #[error(transparent)]

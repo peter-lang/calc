@@ -129,7 +129,13 @@ Semver-compatible, no source changes. Grouped because none can break.
 - [x] Step 1: minor bumps `serde`/`regex`/`chrono` — *working tree, uncommitted*
 - [x] Step 2: `thiserror` 1 → 2 — *no source changes; transparent*
 - [x] Step 3: `variant_count` → `strum` `EnumCount` (`Token::VARIANT_COUNT` → `Token::COUNT`)
-- [ ] Step 4: `directories` → `etcetera`
+- [x] **Toolchain bump 1.77.2 → 1.96.0** — required by `etcetera 0.11` (edition2024)
+      and later steps. `files::cache` now returns `Result` (new `CalcError::HomeDirNotFound`).
+- [x] Step 4: `directories` → `etcetera` — *cache location on macOS moves from
+      `~/Library/Caches/calc` to `~/.cache/calc` (XDG base strategy); cache is regenerable*
+- [ ] Step 4b (follow-up surfaced by 1.96): replace `fn`-pointer operators with a
+      type-safe operator enum — rustc 1.96 warns that `fn` pointer comparisons in
+      `debug.rs` are unreliable. Fixes 6 warnings and removes a risky construct.
 - [ ] Step 5: `quick-xml` 0.32 → 0.40
 - [ ] Step 6: `ureq` 2 → 3
 - [ ] Step 7: `rustyline` 14 → 18

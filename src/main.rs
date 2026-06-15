@@ -21,7 +21,7 @@ mod value;
 mod value_op;
 
 fn main() -> Result<(), CalcError> {
-    let path_cache_history = files::cache("history.txt");
+    let path_cache_history = files::cache("history.txt")?;
 
     let lexer = Lexer::new();
     let args: Vec<String> = env::args().collect();

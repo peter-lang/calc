@@ -86,13 +86,14 @@ fn fetch_current_rate_xml() -> Result<String, CalcError> {
 
 const RATE_FILE_NAME: &str = "rates.xml";
 
-fn save_current_rate_xml_file(xml: &str) -> () {
-    let file = files::cache(RATE_FILE_NAME);
-    let _ = fs::write(file, xml);
+fn save_current_rate_xml_file(xml: &str) {
+    if let Ok(file) = files::cache(RATE_FILE_NAME) {
+        let _ = fs::write(file, xml);
+    }
 }
 
 fn read_current_rate_xml_file() -> Option<String> {
-    let file = files::cache(RATE_FILE_NAME);
+    let file = files::cache(RATE_FILE_NAME).ok()?;
     if !file.exists() {
         return None;
     }
