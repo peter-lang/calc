@@ -46,6 +46,7 @@ static PATTERNS: [(&'static str, fn(&str) -> Token); Token::COUNT] = [
     ("float", |_| Token::KwFloat),
     ("sci", |_| Token::KwSci),
     ("financial|fin", |_| Token::KwFin),
+    ("rational|rat", |_| Token::KwRat),
     (CURRENCIES_PATTERN, |x| {
         Token::Curr(String::from(x.to_ascii_uppercase()))
     }),

@@ -15,6 +15,7 @@ pub enum Token {
     KwFloat,  // float (formatter)
     KwSci,    // sci (formatter)
     KwFin,    // fin, financial (formatter)
+    KwRat,    // rat, rational (formatter)
 
     LitFloat(f64), // float
     LitInt(i64),   // int

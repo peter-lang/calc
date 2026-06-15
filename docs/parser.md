@@ -16,7 +16,9 @@ enum Match<T> { Ok(T, usize), Err }   // Ok(value, next_position)
 ```
 
 `Parser::parse` calls the top rule `expression(0)` and only succeeds if the
-returned position equals the token count (the whole input was consumed).
+returned position equals the token count (or a trailing `| formatter` clause
+consumes the remainder). It returns `Option<(Node, Option<FormatSpec>)>`: the
+AST node and an optional per-expression format override.
 
 ## Memoization and left recursion
 
@@ -40,6 +42,8 @@ table is cleared at the start of every `parse()` call.
 ## Grammar (precedence, loosest → tightest)
 
 ```
+input      := expression ("|" formatter [precision])?
+
 expression := expression "+" term
             | expression "-" term
             | "-" term                 (unary minus)
@@ -61,10 +65,15 @@ atom       := "(" expression ")"
 
 num_unit   := single_num_unit+         (same-group quantities summed)
 single_num_unit := number unit
+
+formatter  := "fixed" | "float" | "sci" | "fin" | "financial" | "rat" | "rational"
+precision  := integer (0–255)
 ```
 
 Resulting precedence: `+ -` (lowest) < `* / to` < `^` < atoms. Unary minus is
-handled at the `expression` level.
+handled at the `expression` level. The `|` clause is not part of the expression
+grammar — it is matched by `parse_format_clause` after the expression consumes
+all it can.
 
 ## Notable rules
 
@@ -87,6 +96,30 @@ handled at the `expression` level.
   or unit token. `expect_unit` is the big `Token → Unit` mapping, including the
   currency case, which validates the code against the sorted `CURRENCIES` array
   with `binary_search`.
+- **`parse_format_clause` / `expect_precision`.** Called by `parse()` after a
+  successful expression parse, when tokens remain. Tries `Token::Pipe` followed
+  by a formatter keyword (`KwFixed`, `KwFloat`, `KwSci`, `KwFin`, `KwRat`),
+  then an optional `LitInt(0–255)` precision
+  override. Returns `Option<(FormatSpec, next_pos)>`. An unknown name or
+  leftover tokens after the clause cause `parse()` to return `None`.
+
+## `FormatSpec`
+
+```rust
+pub enum FormatSpec {
+    Fixed     { precision: Option<u8> },
+    Float,
+    Sci       { precision: Option<u8> },
+    Rational,
+    Financial { precision: Option<u8> },
+}
+```
+
+Defined in `config.rs` alongside `FormatOptions`. The spec is not attached to
+the `Node` or evaluated by `eval()` — it is purely a rendering hint. `main.rs`
+calls `config::apply_spec(&guard.format, &spec)` to produce a one-off
+`FormatOptions` that overrides `repr` (and the relevant precision field if `N`
+was given), then passes it to `format_value`. See [numbers.md](numbers.md).
 
 ## Adding or changing syntax
 

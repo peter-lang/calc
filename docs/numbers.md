@@ -59,34 +59,80 @@ Rules applied per operation:
 This is the layer to touch when changing **how exactness is preserved or when a
 fallback to float happens**.
 
-## Output formatting (`number.rs`, `config.rs`)
+## Output formatting (`number.rs`, `value.rs`, `config.rs`)
 
-Formatting is driven by `format_number(&Number, &FormatOptions)` in `number.rs`,
-called from `Display for Number` with the current process config. `FormatOptions`
-lives under the `[format]` TOML key (see `config.rs`).
+Two entry points:
 
-**Integers** (`Number::Int`) print in full precision with no suffix by default:
-`3000 → 3000`, `2000000 → 2000000`. Scientific notation is opt-in via
-`int_scientific = true` (threshold: `int_sci_upper`, default 1e15).
+- `format_number(&Number, &FormatOptions) -> String` — formats a bare number.
+- `format_value(&Value, &FormatOptions) -> String` in `value.rs` — wraps
+  `format_number` and appends the unit name when present.
 
-**Whole-valued floats** (`Float(x)` where `x.fract() == 0`) are formatted
-identically to integers — they go through the integer path, not the float path.
+`Display for Number` calls `format_number` with `config::current().format`.
+`main.rs` uses `format_value` so it can supply a per-expression `FormatOptions`
+built from the config + any `| formatter` clause override.
 
-**Floats and rationals** use one of three modes depending on magnitude and config:
+### `NumberRepr` and `FormatOptions`
 
-| Condition | Mode | Example |
-|-----------|------|---------|
-| `abs >= sci_upper` (1e6) or `0 < abs < sci_lower` (1e-6), `scientific = true` | scientific | `1.5e-8`, `1.5000…e6` |
-| otherwise | fixed-point | `3.3333…`, `0.5` |
-| `rational = true` + `Number::Rational` | fraction | `1/3`, `5/6` |
+`FormatOptions` (under the `[format]` TOML key) controls all formatting:
 
-**Precision and the `…` marker:**
-- Fixed-point: `precision` decimal places (default 4). If the rounded value equals
-  the original → trim trailing zeros (`3.5`, `0.5`). If rounded → pad to full
-  precision and append `…` (`3.3333…`, `1.4142…`).
-- Scientific: `sci_precision` mantissa decimals (default 4), same exact/approx
-  check via round-trip parse (`1.5e-8` exact → `1.5e-8`; `1.5000005e6` → `1.5000…e6`).
+```rust
+pub enum NumberRepr { Fixed, Float, Sci, Rational, Financial }
 
-`Rational` is formatted by converting to `f64` then applying the float rules
-(unless `rational = true`). `debug.rs` defines `Debug for Number` delegating to
-`Display` so AST dumps use the same rendering.
+pub struct FormatOptions {
+    pub repr: NumberRepr,         // default: Float
+    pub float: FloatConfig,
+    pub sci:   SciConfig,
+    pub fin:   FinConfig,
+    pub int:   IntConfig,
+}
+```
+
+| `repr` | Effect |
+|--------|--------|
+| `Float` | fixed-point; auto-upgrades to sci outside `[float.sci_upgrade_lower, float.sci_upgrade_upper]` |
+| `Fixed` | always fixed-point, no auto-upgrade |
+| `Sci` | always scientific notation |
+| `Rational` | exact fraction (`1/3`) for `Number::Rational`; float path otherwise |
+| `Financial` | fixed-point with `fin.precision` decimal places; `m` suffix for `|x| ≥ 1e6` |
+
+**Integers** (`Number::Int`) respect `repr`:
+- `Sci` → always scientific notation.
+- `Financial` → always financial format (decimal places preserved, no trailing-zero trim).
+- Others → plain integer; sci only when `[format.int] sci_upgrade = true` and
+  `|x| ≥ sci_upgrade_upper` (default 1e15).
+
+**Whole-valued floats** (`Float(x)` where `x.fract() == 0`) go through the
+integer path, not the float path.
+
+**Floats and rationals** use `repr` as above. `Rational` is converted to `f64`
+before formatting unless `repr = Rational`.
+
+### Precision and the `…` marker
+
+- **Fixed-point / `Fixed` / `Float`**: `float.precision` decimal places (default 4).
+  Rounded value equals original → trim trailing zeros (`0.5`, `3`).
+  Rounded ≠ original → append `…` (`0.3333…`, `1.4142…`).
+- **Scientific**: `sci.precision` mantissa decimals (default 4). Exact/approx
+  decided by round-trip parse (`1.5e-8` → exact; `1.5000005e6` → `1.5000…e6`).
+- **Financial**: `fin.precision` decimal places (default 2). Trailing zeros are
+  **kept** (`42.00`); `…` appended only when rounding loses information (`1.23…m`).
+  The `m` suffix is placed after the `…` when present (`1.23…m`, not `1.23m…`).
+
+### `| formatter [N]` — per-expression override
+
+A trailing `| formatter` clause overrides `repr` (and optionally precision) for
+that one result. `FormatSpec` is defined in `config.rs`; `apply_spec` clones the
+config `FormatOptions` and patches it:
+
+| Clause | `repr` set | Precision field |
+|--------|------------|-----------------|
+| `\| fixed [N]` | `Fixed` | `float.precision` |
+| `\| float` | `Float` | — |
+| `\| sci [N]` | `Sci` | `sci.precision` |
+| `\| rat` / `\| rational` | `Rational` | — |
+| `\| fin [N]` / `\| financial [N]` | `Financial` | `fin.precision` |
+
+See [parser.md](parser.md) for the grammar and how `main.rs` applies the spec.
+
+`debug.rs` defines `Debug for Number` delegating to `Display` so AST dumps use
+the same rendering.

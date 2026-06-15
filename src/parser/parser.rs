@@ -77,9 +77,7 @@ impl Parser {
                 let (precision, pos) = self.expect_precision(pos + 1);
                 Some((FormatSpec::Financial { precision }, pos))
             }
-            Token::Ident(s) if s == "rat" || s == "rational" => {
-                Some((FormatSpec::Rational, pos + 1))
-            }
+            Token::KwRat => Some((FormatSpec::Rational, pos + 1)),
             _ => None,
         }
     }

@@ -27,9 +27,8 @@ PATTERNS = [ (r"...", |x| Token::LitFloat(...)),
    map_captures: first matching group index → PATTERNS[index-1].extractor
 ```
 
-`Token::VARIANT_COUNT` (from the `variant_count` derive) is used to size and
-iterate the table, so the table length **must** match the number of `Token`
-variants.
+`Token::COUNT` (from `strum::EnumCount`) is used to size and iterate the table,
+so the table length **must** match the number of `Token` variants.
 
 ## Ordering matters — longest match wins
 
@@ -40,6 +39,12 @@ position wins. The table is therefore ordered deliberately:
 - multi-character unit names before shorter ones — the table is grouped
   `// 3 char`, `// 2 char`, `// 1 char` (e.g. `cm3` before `cm`, `cm` before
   `m`),
+- **formatter keywords** (`fixed`, `float`, `sci`, `fin`/`financial`,
+  `rat`/`rational`) appear before any unit token. `fixed`, `float`,
+  `fin`/`financial` start with `f` (which is `TempF`) and `sci` starts with
+  `s` (which is `TimeSec`), so without dedicated keywords those names would
+  tokenize incorrectly (`fin` → `[TempF, LenInch]`). `rat`/`rational` have no
+  conflict but are also keywords for consistency.
 - the generic identifier rule `[A-Za-z_]...` and the catch-all `\S+`
   (`Token::INVALID`) come last.
 
@@ -89,5 +94,5 @@ and bump the array length. See [currency.md](currency.md).
 3. If it is a unit, also wire it through the parser's `expect_unit` and the
    `Unit` machinery — see [units.md](units.md).
 
-The table length is checked against `Token::VARIANT_COUNT` implicitly (the array
-type is `[_; Token::VARIANT_COUNT]`), so a mismatch is a compile error.
+The table length is checked against `Token::COUNT` implicitly (the array type is
+`[_; Token::COUNT]`), so a mismatch is a compile error.
