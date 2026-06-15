@@ -87,8 +87,9 @@ handled at the `expression` level.
 
 - **New operator** — add a token (see [lexer.md](lexer.md)), then add an
   alternative to the appropriate precedence rule, building a `Node::BinaryExpr`/
-  `UnaryExpr` whose `op` is the matching `value_op` function. Add the operator to
-  `debug.rs`'s `fmt_binary_op`/`fmt_unary_op` so the AST debug output names it.
+  `UnaryExpr` whose `op` is the matching `BinaryOp`/`UnaryOp` variant. Add the
+  variant and its `apply`/`symbol` arms in `value_op.rs` (the compiler enforces
+  exhaustiveness, so the debug output names it automatically).
 - **New unit token** — extend `expect_unit`'s match arm (and the `Unit` enum /
   factors per [units.md](units.md)). No grammar change needed; `unit` is already
   an alternative in `atom` and `num_unit`.

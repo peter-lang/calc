@@ -2,6 +2,59 @@ use crate::{number_op, unit};
 use crate::error::CalcError;
 use crate::value::Value;
 
+#[derive(Clone, Copy, PartialEq)]
+pub enum BinaryOp {
+    Add,
+    Sub,
+    Mul,
+    Div,
+    Pow,
+    Conversion,
+}
+
+#[derive(Clone, Copy, PartialEq)]
+pub enum UnaryOp {
+    Neg,
+}
+
+impl BinaryOp {
+    pub fn apply(self, lhs: Value, rhs: Value) -> Result<Value, CalcError> {
+        match self {
+            BinaryOp::Add => add(lhs, rhs),
+            BinaryOp::Sub => sub(lhs, rhs),
+            BinaryOp::Mul => mul(lhs, rhs),
+            BinaryOp::Div => div(lhs, rhs),
+            BinaryOp::Pow => pow(lhs, rhs),
+            BinaryOp::Conversion => conversion(lhs, rhs),
+        }
+    }
+
+    pub fn symbol(self) -> &'static str {
+        match self {
+            BinaryOp::Add => "+",
+            BinaryOp::Sub => "-",
+            BinaryOp::Mul => "*",
+            BinaryOp::Div => "/",
+            BinaryOp::Pow => "^",
+            BinaryOp::Conversion => "to",
+        }
+    }
+}
+
+impl UnaryOp {
+    pub fn apply(self, val: Value) -> Result<Value, CalcError> {
+        match self {
+            UnaryOp::Neg => sub_unary(val),
+        }
+    }
+
+    pub fn symbol(self) -> &'static str {
+        match self {
+            UnaryOp::Neg => "-",
+        }
+    }
+}
+
 pub fn conversion(lhs: Value, rhs: Value) -> Result<Value, CalcError> {
     if let Some(lhs_unit) = &lhs.unit {
         if let Some(rhs_unit) = &rhs.unit {

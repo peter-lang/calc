@@ -30,7 +30,7 @@ Input flows through a classic interpreter pipeline:
 
 ```
 text ──▶ Lexer ──▶ [Token] ──▶ Parser ──▶ Node (AST) ──▶ eval() ──▶ Value ──▶ Display
-        (regex)              (packrat)                  (fn ptrs)
+        (regex)              (packrat)                  (op enums)
 ```
 
 A `Value` is a [`Number`](numbers.md) paired with an optional

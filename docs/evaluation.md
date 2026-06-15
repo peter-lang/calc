@@ -8,19 +8,20 @@ Files: [`src/node.rs`](../src/node.rs), [`src/value.rs`](../src/value.rs),
 ```rust
 pub enum Node {
     Value(Value),
-    UnaryExpr  { op: fn(Value)        -> Result<Value, CalcError>, val: Box<Node> },
-    BinaryExpr { op: fn(Value, Value) -> Result<Value, CalcError>, lhs: Box<Node>, rhs: Box<Node> },
+    UnaryExpr  { op: UnaryOp,  val: Box<Node> },
+    BinaryExpr { op: BinaryOp, lhs: Box<Node>, rhs: Box<Node> },
 }
 ```
 
-Operators are stored as **function pointers into `value_op`**, not as an enum of
-operator kinds. `Node::eval` is therefore a three-line recursion: evaluate the
-children, then apply the stored function.
+Operators are **enum variants** (`BinaryOp` / `UnaryOp`, defined in `value_op`),
+each with an `apply()` method (the operation) and a `symbol()` method (for debug
+output). `Node::eval` is therefore a three-line recursion: evaluate the children,
+then `apply` the operator.
 
 ```rust
 Node::Value(v)            => Ok(v),
-Node::UnaryExpr { op, v } => op(v.eval()?),
-Node::BinaryExpr {op,l,r} => op(l.eval()?, r.eval()?),
+Node::UnaryExpr { op, v } => op.apply(v.eval()?),
+Node::BinaryExpr {op,l,r} => op.apply(l.eval()?, r.eval()?),
 ```
 
 Evaluation is eager and bottom-up; errors short-circuit via `?`.
@@ -39,7 +40,8 @@ A number with an optional unit. `From<i64>`/`From<f64>` make unitless values;
 ## Operators: `value_op`
 
 `value_op` is the bridge between pure-number arithmetic ([`number_op`](numbers.md))
-and unit handling ([`unit`](units.md)). Each function combines the **numbers**
+and unit handling ([`unit`](units.md)). The `BinaryOp`/`UnaryOp` enums dispatch
+(via `apply`) to one function per operator; each function combines the **numbers**
 and the **units** and decides the result's unit:
 
 | Function | Number step | Unit step / rule |
@@ -53,15 +55,15 @@ and the **units** and decides the result's unit:
 This is the layer to edit when changing **how an operator treats units** (the
 numeric behavior lives one level down in `number_op`).
 
-## Why operators are function pointers
+## Why operators are an enum
 
-Keeping `op` as a `fn` pointer makes the AST and evaluator minimal and avoids a
-parallel "operator kind" enum that would have to be matched in several places.
-The cost: a `Node` can't directly name its operator. `debug.rs` recovers the
-symbol by **comparing the function pointer** against each known `value_op`
-function (`fmt_binary_op`/`fmt_unary_op`) so that `Debug for Node` can pretty-
-print the parsed tree, e.g. `((5+3)*2)`. If you add a new `value_op` operator,
-add it to these comparisons too, or it will print as `?`.
+Operators are modelled as the `BinaryOp`/`UnaryOp` enums rather than bare `fn`
+pointers. The enum carries the operator's identity directly, so `debug.rs` can
+ask for `op.symbol()` to pretty-print the parsed tree (e.g. `((5+3)*2)`) — no
+fragile pointer comparison. (The earlier `fn`-pointer design relied on comparing
+function addresses, which rustc now warns is unreliable.) To add an operator: add
+a variant and extend the `apply`/`symbol` `match` arms in `value_op.rs` — the
+compiler's exhaustiveness checking guarantees you don't miss one.
 
 ## Worked example
 

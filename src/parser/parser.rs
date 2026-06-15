@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 
-use crate::{unit, value_op};
+use crate::unit;
+use crate::value_op::{BinaryOp, UnaryOp};
 use crate::node::Node;
 use crate::number::Number;
 use crate::parser::token::{CURRENCIES, Token};
@@ -126,7 +127,7 @@ impl Parser {
                 if let Some(_) = unit::common_type(&lhs_unit, &rhs_unit) {
                     return Match::Ok(
                         Node::BinaryExpr {
-                            op: value_op::add,
+                            op: BinaryOp::Add,
                             lhs: Box::new(Node::value(lhs_num, Some(lhs_unit))),
                             rhs: Box::new(Node::value(rhs_num, Some(rhs_unit))),
                         },
@@ -184,7 +185,7 @@ impl Parser {
                 if let Match::Ok(rhs, pos) = self.exponent(pos) {
                     return Match::Ok(
                         Node::BinaryExpr {
-                            op: value_op::pow,
+                            op: BinaryOp::Pow,
                             lhs: Box::new(lhs),
                             rhs: Box::new(rhs),
                         },
@@ -206,7 +207,7 @@ impl Parser {
                 if let Match::Ok(rhs, pos) = self.exponent(pos) {
                     return Match::Ok(
                         Node::BinaryExpr {
-                            op: value_op::mul,
+                            op: BinaryOp::Mul,
                             lhs: Box::new(lhs),
                             rhs: Box::new(rhs),
                         },
@@ -217,7 +218,7 @@ impl Parser {
                 if let Match::Ok(rhs, pos) = self.exponent(pos) {
                     return Match::Ok(
                         Node::BinaryExpr {
-                            op: value_op::div,
+                            op: BinaryOp::Div,
                             lhs: Box::new(lhs),
                             rhs: Box::new(rhs),
                         },
@@ -228,7 +229,7 @@ impl Parser {
                 if let Match::Ok(unit, pos) = self.expect_unit(pos) {
                     return Match::Ok(
                         Node::BinaryExpr {
-                            op: value_op::conversion,
+                            op: BinaryOp::Conversion,
                             lhs: Box::new(lhs),
                             rhs: Box::new(Node::value(1.into(), Some(unit))),
                         },
@@ -250,7 +251,7 @@ impl Parser {
                 if let Match::Ok(rhs, pos) = self.term(pos) {
                     return Match::Ok(
                         Node::BinaryExpr {
-                            op: value_op::add,
+                            op: BinaryOp::Add,
                             lhs: Box::new(lhs),
                             rhs: Box::new(rhs),
                         },
@@ -261,7 +262,7 @@ impl Parser {
                 if let Match::Ok(rhs, pos) = self.term(pos) {
                     return Match::Ok(
                         Node::BinaryExpr {
-                            op: value_op::sub,
+                            op: BinaryOp::Sub,
                             lhs: Box::new(lhs),
                             rhs: Box::new(rhs),
                         },
@@ -274,7 +275,7 @@ impl Parser {
             if let Match::Ok(rhs, pos) = self.term(pos) {
                 return Match::Ok(
                     Node::UnaryExpr {
-                        op: value_op::sub_unary,
+                        op: UnaryOp::Neg,
                         val: Box::new(rhs),
                     },
                     pos,

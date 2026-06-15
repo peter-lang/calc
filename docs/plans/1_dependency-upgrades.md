@@ -133,9 +133,9 @@ Semver-compatible, no source changes. Grouped because none can break.
       and later steps. `files::cache` now returns `Result` (new `CalcError::HomeDirNotFound`).
 - [x] Step 4: `directories` → `etcetera` — *cache location on macOS moves from
       `~/Library/Caches/calc` to `~/.cache/calc` (XDG base strategy); cache is regenerable*
-- [ ] Step 4b (follow-up surfaced by 1.96): replace `fn`-pointer operators with a
-      type-safe operator enum — rustc 1.96 warns that `fn` pointer comparisons in
-      `debug.rs` are unreliable. Fixes 6 warnings and removes a risky construct.
+- [x] Step 4b (follow-up surfaced by 1.96): replaced `fn`-pointer operators with
+      `BinaryOp`/`UnaryOp` enums (`apply`/`symbol`). Fixes the 6 warnings, removes
+      the risky pointer comparison, and updates the affected docs.
 - [ ] Step 5: `quick-xml` 0.32 → 0.40
 - [ ] Step 6: `ureq` 2 → 3
 - [ ] Step 7: `rustyline` 14 → 18

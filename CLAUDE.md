@@ -34,8 +34,8 @@ cargo test                # tests live in rational.rs and unit.rs
 text → Lexer → [Token] → Parser → Node (AST) → eval() → Value → Display
 ```
 
-Operators in the AST are **function pointers** into `value_op` — there is no
-operator enum. `eval()` just applies the stored `fn`. A `Value` is a `Number`
+Operators in the AST are **enum variants** (`BinaryOp`/`UnaryOp` in `value_op`);
+`eval()` calls `op.apply(...)`. A `Value` is a `Number`
 (`Int`/`Rational`/`Float`) plus an optional `Unit`.
 
 ## Module map
@@ -92,8 +92,8 @@ operator enum. `eval()` just applies the stored `fn`. A `Value` is a `Number`
   `rates.xml` (valid if dated today/yesterday).
 - **Four parallel `match`es over `Unit`** must stay in sync; a missing
   `get_default_factor` arm silently yields `ConversionError` at runtime.
-- **Operators are fn pointers**, so `debug.rs` identifies them by pointer
-  comparison — new operators must be added there to print as anything but `?`.
+- **Operators are the `BinaryOp`/`UnaryOp` enums** in `value_op.rs`; add a variant
+  plus its `apply`/`symbol` arms (exhaustiveness-checked) when adding an operator.
 
 ## Engineering principles
 

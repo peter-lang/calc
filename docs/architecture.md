@@ -16,8 +16,8 @@ raw string  ───▶  Lexer::parse  ───▶  [Token]  ───▶  Par
    supports left recursion, so the grammar can be written naturally. See
    [parser.md](parser.md).
 3. **Evaluate** — `Node::eval` walks the tree bottom-up. Each operator node
-   holds a **function pointer** (e.g. `value_op::add`) that is applied to the
-   evaluated children. See [evaluation.md](evaluation.md).
+   holds an **operator enum** (`BinaryOp`/`UnaryOp`) whose `apply()` is called on
+   the evaluated children. See [evaluation.md](evaluation.md).
 4. **Display** — the resulting `Value` is printed via its `Display` impl,
    which delegates number formatting to [`Number`](numbers.md) and unit naming
    to `unit::get_unit_name`.
@@ -68,11 +68,10 @@ error is printed and the loop continues; it is not fatal.
 
 ## Design notes worth knowing
 
-- **Operators are function pointers, not enum variants.** `Node::BinaryExpr`
-  stores `op: fn(Value, Value) -> Result<Value, CalcError>`. This keeps the AST
-  tiny and the evaluator trivial, but it means a node has no human-readable
-  operator name — `debug.rs` reconstructs the symbol by comparing the pointer
-  against each known `value_op` function.
+- **Operators are enum variants.** `Node::BinaryExpr` stores `op: BinaryOp` (and
+  `UnaryExpr` stores `UnaryOp`); each enum has `apply()` for evaluation and
+  `symbol()` for debug output, both exhaustively matched in `value_op.rs`. This
+  keeps the AST tiny while giving every node a known operator identity.
 - **Exactness first.** Integer and rational arithmetic stay exact; the code only
   promotes to `f64` when it must (overflow, irrational result, or a float
   operand). See [numbers.md](numbers.md).
