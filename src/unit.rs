@@ -267,18 +267,18 @@ mod tests {
     #[test]
     fn test_convert_pint_to_gallon() {
         let result = convert(Number::Int(1), &Unit::VolPint, &Unit::VolGallon);
-        assert_eq!(result, Ok(Number::Rational(Rational::new(1, 8))));
+        assert_eq!(result.unwrap(), Number::Rational(Rational::new(1, 8)));
     }
 
     #[test]
     fn test_convert_fahrenheit_to_celsius() {
         let result = convert(Number::Int(95), &Unit::TempF, &Unit::TempC);
-        assert_eq!(result, Ok(Number::Int(35)));
+        assert_eq!(result.unwrap(), Number::Int(35));
     }
 
     #[test]
     fn test_convert_celsius_to_fahrenheit() {
         let result = convert(Number::Int(15), &Unit::TempC, &Unit::TempF);
-        assert_eq!(result, Ok(Number::Int(59)));
+        assert_eq!(result.unwrap(), Number::Int(59));
     }
 }
