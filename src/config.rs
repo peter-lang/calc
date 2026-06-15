@@ -16,38 +16,95 @@ pub struct Config {
     pub format: FormatOptions,
 }
 
+#[derive(Debug, PartialEq, Default, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum NumberRepr {
+    Fixed,
+    #[default]
+    Float,
+    Sci,
+    Rational,
+    Financial,
+}
+
 #[derive(Debug, PartialEq, Deserialize)]
 #[serde(default)]
 pub struct FormatOptions {
-    /// Fixed-point decimal places for floats / rationals.
+    pub repr: NumberRepr,
+    pub float: FloatConfig,
+    pub sci: SciConfig,
+    pub fin: FinConfig,
+    pub int: IntConfig,
+}
+
+#[derive(Debug, PartialEq, Deserialize)]
+#[serde(default)]
+pub struct FloatConfig {
     pub precision: u8,
-    /// Enable scientific notation for floats/rationals outside [sci_lower, sci_upper].
-    pub scientific: bool,
-    /// |x| below this → scientific (only when `scientific` is true).
-    pub sci_lower: f64,
-    /// |x| above this → scientific (only when `scientific` is true).
-    pub sci_upper: f64,
-    /// Mantissa decimal places in scientific mode.
-    pub sci_precision: u8,
-    /// Print `Rational` values as `a/b` instead of decimals.
-    pub rational: bool,
-    /// Opt integers into scientific notation above `int_sci_upper`.
-    pub int_scientific: bool,
-    /// Integer scientific-notation threshold (only when `int_scientific` is true).
-    pub int_sci_upper: f64,
+    pub sci_upgrade: bool,
+    pub sci_upgrade_lower: f64,
+    pub sci_upgrade_upper: f64,
+}
+
+#[derive(Debug, PartialEq, Deserialize)]
+#[serde(default)]
+pub struct SciConfig {
+    pub precision: u8,
+}
+
+#[derive(Debug, PartialEq, Deserialize)]
+#[serde(default)]
+pub struct FinConfig {
+    pub precision: u8,
+}
+
+#[derive(Debug, PartialEq, Deserialize)]
+#[serde(default)]
+pub struct IntConfig {
+    pub sci_upgrade: bool,
+    pub sci_upgrade_upper: f64,
 }
 
 impl Default for FormatOptions {
     fn default() -> Self {
         Self {
+            repr: NumberRepr::Float,
+            float: FloatConfig::default(),
+            sci: SciConfig::default(),
+            fin: FinConfig::default(),
+            int: IntConfig::default(),
+        }
+    }
+}
+
+impl Default for FloatConfig {
+    fn default() -> Self {
+        Self {
             precision: 4,
-            scientific: true,
-            sci_lower: 1e-6,
-            sci_upper: 1e6,
-            sci_precision: 4,
-            rational: false,
-            int_scientific: false,
-            int_sci_upper: 1e15,
+            sci_upgrade: true,
+            sci_upgrade_lower: 1e-6,
+            sci_upgrade_upper: 1e6,
+        }
+    }
+}
+
+impl Default for SciConfig {
+    fn default() -> Self {
+        Self { precision: 4 }
+    }
+}
+
+impl Default for FinConfig {
+    fn default() -> Self {
+        Self { precision: 2 }
+    }
+}
+
+impl Default for IntConfig {
+    fn default() -> Self {
+        Self {
+            sci_upgrade: false,
+            sci_upgrade_upper: 1e15,
         }
     }
 }
@@ -103,14 +160,23 @@ const DEFAULT_TEMPLATE: &str = "\
 # Missing keys fall back to built-in defaults.
 
 [format]
-precision      = 4      # fixed-point decimal places for floats / rationals
-scientific     = true   # use scientific notation outside [sci_lower, sci_upper]
-sci_lower      = 1e-6   # |x| below this threshold → scientific
-sci_upper      = 1e6    # |x| above this threshold → scientific
-sci_precision  = 4      # mantissa decimal places in scientific mode
-rational       = false  # show exact fractions as a/b instead of decimals
-int_scientific = false  # opt integers into scientific above int_sci_upper
-int_sci_upper  = 1e15   # integer scientific threshold (only with int_scientific)
+repr = \"float\"  # fixed | float | sci | rational | financial
+
+[format.float]
+precision         = 4      # decimal places for fixed/float display
+sci_upgrade       = true   # auto-upgrade to sci outside [lower, upper]
+sci_upgrade_lower = 1e-6   # |x| below this → sci
+sci_upgrade_upper = 1e6    # |x| above this → sci
+
+[format.sci]
+precision = 4              # mantissa decimal places
+
+[format.fin]
+precision = 2              # decimal places for financial display
+
+[format.int]
+sci_upgrade       = false  # auto-upgrade integers to sci above upper
+sci_upgrade_upper = 1e15   # integer sci threshold
 ";
 
 #[cfg(test)]

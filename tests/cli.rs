@@ -318,43 +318,60 @@ fn config_first_run_bootstrap_creates_file() {
     );
 }
 
-/// Run with a custom [format] section in the config and return trimmed stdout.
-fn eval_with_format_config(expr: &str, format_toml: &str) -> String {
+/// Run with a custom config and return trimmed stdout. Pass a full TOML string
+/// (e.g. `"[format]\nrepr = \"sci\""`) or `""` for defaults.
+fn eval_with_format_config(expr: &str, config_toml: &str) -> String {
     let dir = tempfile::tempdir().expect("create temp dir");
     let conf = dir.path().join("conf.toml");
-    std::fs::write(&conf, format!("[format]\n{}", format_toml)).expect("write config");
+    std::fs::write(&conf, config_toml).expect("write config");
     let (ok, out, _) = eval_with_env(expr, &[("CALC_CONFIG", conf.to_str().unwrap())], &[]);
-    assert!(ok, "calc failed for {expr:?} with config {format_toml:?}");
+    assert!(ok, "calc failed for {expr:?} with config {config_toml:?}");
     out
 }
 
 #[test]
 fn format_fixed_precision() {
-    // precision = 2: two decimal places
-    assert_eq!(eval_with_format_config("1/3", "precision = 2"), "0.33…");
-    assert_eq!(eval_with_format_config("1/2", "precision = 2"), "0.5");
-    // precision = 6: six decimal places
-    assert_eq!(eval_with_format_config("1/3", "precision = 6"), "0.333333…");
+    assert_eq!(
+        eval_with_format_config("1/3", "[format.float]\nprecision = 2"),
+        "0.33…"
+    );
+    assert_eq!(
+        eval_with_format_config("1/2", "[format.float]\nprecision = 2"),
+        "0.5"
+    );
+    assert_eq!(
+        eval_with_format_config("1/3", "[format.float]\nprecision = 6"),
+        "0.333333…"
+    );
 }
 
 #[test]
 fn format_scientific_thresholds() {
-    // values below sci_lower or above sci_upper use scientific for non-whole floats
+    // default (float repr, sci_upgrade = true): extreme values auto-upgrade to sci
     assert_eq!(eval_with_format_config("1.5e-8", ""), "1.5e-8");
     assert_eq!(eval_with_format_config("1500000.5", ""), "1.5000…e6");
-    // scientific = false: always fixed-point regardless of magnitude
+    // fixed repr: always fixed-point, no auto-upgrade regardless of magnitude
     assert_eq!(
-        eval_with_format_config("1500000.5", "scientific = false"),
+        eval_with_format_config("1500000.5", "[format]\nrepr = \"fixed\""),
         "1500000.5"
     );
 }
 
 #[test]
 fn format_rational_mode() {
-    assert_eq!(eval_with_format_config("1/3", "rational = true"), "1/3");
-    assert_eq!(eval_with_format_config("5/6", "rational = true"), "5/6");
+    assert_eq!(
+        eval_with_format_config("1/3", "[format]\nrepr = \"rational\""),
+        "1/3"
+    );
+    assert_eq!(
+        eval_with_format_config("5/6", "[format]\nrepr = \"rational\""),
+        "5/6"
+    );
     // whole-valued rational demotes to Int — printed as integer, not a/b
-    assert_eq!(eval_with_format_config("1/2 + 1/2", "rational = true"), "1");
+    assert_eq!(
+        eval_with_format_config("1/2 + 1/2", "[format]\nrepr = \"rational\""),
+        "1"
+    );
 }
 
 #[test]
@@ -363,13 +380,16 @@ fn format_int_scientific() {
     assert_eq!(
         eval_with_format_config(
             "1000000000000000",
-            "int_scientific = true\nint_sci_upper = 1e12"
+            "[format.int]\nsci_upgrade = true\nsci_upgrade_upper = 1e12"
         ),
         "1e15"
     );
     // below threshold: plain
     assert_eq!(
-        eval_with_format_config("999", "int_scientific = true\nint_sci_upper = 1e12"),
+        eval_with_format_config(
+            "999",
+            "[format.int]\nsci_upgrade = true\nsci_upgrade_upper = 1e12"
+        ),
         "999"
     );
 }
@@ -383,16 +403,16 @@ fn repl_error_recovery() {
 
 #[test]
 fn format_sci_precision() {
-    // sci_precision controls mantissa decimal places in scientific mode
+    // sci precision controls mantissa decimal places in scientific mode
     assert_eq!(
-        eval_with_format_config("2250000.75", "sci_precision = 2"),
+        eval_with_format_config("2250000.75", "[format.sci]\nprecision = 2"),
         "2.25…e6"
     );
     assert_eq!(
-        eval_with_format_config("2250000.75", "sci_precision = 6"),
+        eval_with_format_config("2250000.75", "[format.sci]\nprecision = 6"),
         "2.250001…e6"
     );
-    // default (sci_precision = 4) for reference
+    // default (sci precision = 4) for reference
     assert_eq!(eval_with_format_config("2250000.75", ""), "2.2500…e6");
 }
 

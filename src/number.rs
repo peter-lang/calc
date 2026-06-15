@@ -1,6 +1,6 @@
 use std::fmt::{Display, Formatter};
 
-use crate::config::{self, FormatOptions};
+use crate::config::{self, FormatOptions, NumberRepr};
 use crate::rational::Rational;
 
 #[derive(Clone, PartialEq)]
@@ -13,20 +13,23 @@ pub enum Number {
 pub fn format_number(num: &Number, opts: &FormatOptions) -> String {
     match num {
         Number::Int(x) => format_int(*x, opts),
-        Number::Rational(r) => {
-            if opts.rational {
-                return format!("{}/{}", r.num, r.den);
+        Number::Rational(r) => match opts.repr {
+            NumberRepr::Rational => format!("{}/{}", r.num, r.den),
+            _ => {
+                let f: f64 = r.into();
+                format_float(f, opts)
             }
-            let f: f64 = r.into();
-            format_float(f, opts)
-        }
+        },
         Number::Float(x) => format_float(*x, opts),
     }
 }
 
 fn format_int(x: i64, opts: &FormatOptions) -> String {
-    if opts.int_scientific && (x.abs() as f64) >= opts.int_sci_upper {
-        format_scientific(x as f64, opts.sci_precision)
+    if matches!(opts.repr, NumberRepr::Financial) && (x.unsigned_abs() as f64) >= 1e6 {
+        return format_financial(x as f64, opts.fin.precision);
+    }
+    if opts.int.sci_upgrade && (x.unsigned_abs() as f64) >= opts.int.sci_upgrade_upper {
+        format_scientific(x as f64, opts.sci.precision)
     } else {
         format!("{}", x)
     }
@@ -36,15 +39,32 @@ fn format_float(x: f64, opts: &FormatOptions) -> String {
     if !x.is_finite() {
         return format!("{}", x);
     }
-    // Whole-valued floats render identically to integers.
     if x.fract() == 0.0 && x.abs() <= i64::MAX as f64 {
         return format_int(x as i64, opts);
     }
-    let abs = x.abs();
-    if opts.scientific && (abs >= opts.sci_upper || (abs > 0.0 && abs < opts.sci_lower)) {
-        format_scientific(x, opts.sci_precision)
+    match opts.repr {
+        NumberRepr::Fixed | NumberRepr::Rational => format_fixed(x, opts.float.precision),
+        NumberRepr::Float => {
+            let abs = x.abs();
+            if opts.float.sci_upgrade
+                && (abs >= opts.float.sci_upgrade_upper
+                    || (abs > 0.0 && abs < opts.float.sci_upgrade_lower))
+            {
+                format_scientific(x, opts.sci.precision)
+            } else {
+                format_fixed(x, opts.float.precision)
+            }
+        }
+        NumberRepr::Sci => format_scientific(x, opts.sci.precision),
+        NumberRepr::Financial => format_financial(x, opts.fin.precision),
+    }
+}
+
+fn format_financial(x: f64, precision: u8) -> String {
+    if x.abs() >= 1e6 {
+        format!("{}m", format_fixed(x / 1e6, precision))
     } else {
-        format_fixed(x, opts.precision)
+        format_fixed(x, precision)
     }
 }
 
@@ -59,14 +79,12 @@ fn format_fixed(x: f64, precision: u8) -> String {
     }
 }
 
-fn format_scientific(x: f64, sci_precision: u8) -> String {
-    let p = sci_precision as usize;
-    // Let Rust's built-in produce a correctly-rounded mantissa string.
+fn format_scientific(x: f64, precision: u8) -> String {
+    let p = precision as usize;
     let raw = format!("{:.prec$e}", x, prec = p);
     let (mant_str, exp_str) = raw
         .split_once('e')
         .expect("scientific notation always has 'e'");
-    // Exactness: the rounded representation parses back to the original value.
     let is_exact = raw.parse::<f64>().expect("valid float") == x;
     let mant_out = if is_exact {
         trim_zeros(mant_str.to_string())
