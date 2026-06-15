@@ -139,7 +139,9 @@ Semver-compatible, no source changes. Grouped because none can break.
 - [x] Step 5: `quick-xml` 0.32 → 0.40 — only the serde feature renamed
       (`["serde","serialize"]` → `["serialize"]`); deserialization validated against
       the live MNB feed
-- [ ] Step 6: `ureq` 2 → 3
+- [x] Step 6: `ureq` 2 → 3 — `.set`→`.header`, `.send_bytes`→`.send`,
+      `into_reader`→`body_mut().as_reader()`; `#[from] ureq::Error` still works.
+      Fresh fetch + cached read validated against the live MNB feed.
 - [ ] Step 7: `rustyline` 14 → 18
 
 > Resume point: commit the prerequisite test fix and Step 1 (currently staged in

@@ -74,10 +74,10 @@ struct MNBCurrentExchangeRates {
 
 fn fetch_current_rate_xml() -> Result<String, CalcError> {
     const MNB_BODY: &str = r#"<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:web="http://www.mnb.hu/webservices/"><soapenv:Header/><soapenv:Body><web:GetCurrentExchangeRates/></soapenv:Body></soapenv:Envelope>"#;
-    let response = ureq::post("http://www.mnb.hu/arfolyamok.asmx")
-        .set("Content-Type", "text/xml;charset=UTF-8")
-        .send_bytes(MNB_BODY.as_bytes())?;
-    let result: Envelope = de::from_reader(BufReader::new(response.into_reader()))?;
+    let mut response = ureq::post("http://www.mnb.hu/arfolyamok.asmx")
+        .header("Content-Type", "text/xml;charset=UTF-8")
+        .send(MNB_BODY.as_bytes())?;
+    let result: Envelope = de::from_reader(BufReader::new(response.body_mut().as_reader()))?;
     Ok(result
         .body
         .get_current_exchange_rates_response
