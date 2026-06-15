@@ -95,11 +95,56 @@ operator enum. `eval()` just applies the stored `fn`. A `Value` is a `Number`
 - **Operators are fn pointers**, so `debug.rs` identifies them by pointer
   comparison — new operators must be added there to print as anything but `?`.
 
-## Conventions
+## Engineering principles
 
-- Errors flow as `Result<_, CalcError>`; REPL prints eval errors and continues.
-- Prefer keeping arithmetic exact (`Int`/`Rational`) and only fall back to
-  `Float` when unavoidable — match the existing promotion pattern in
-  `number_op.rs`.
-- This is small, dependency-light, std-plus-a-few-crates code; keep new code in
-  the same plain, explicit style (no heavy abstraction).
+These are the rules to follow for any change. They take precedence over matching
+local style where the two conflict.
+
+- **Encode requirements in the type system first.** Make illegal states
+  unrepresentable and let invariants be checked at compile time (types, enums,
+  `const` assertions). If a behaviour genuinely cannot be expressed statically,
+  encode it in a test. **Do not** document an "unreachable"/"can't happen" path
+  in a comment — restructure the types so the path is impossible, or assert it.
+- **No risky constructs.** The whole point of using Rust is correctness through
+  its type system. Avoid `unsafe`, and avoid panics on reachable paths
+  (`unwrap`/`expect`/`panic!`/indexing that can go out of bounds / silent
+  `as` truncation). Return `Result<_, CalcError>` instead. Existing spots that
+  violate this (e.g. `unwrap`s in `lexer.rs`/`files.rs`, `panic!` in
+  `rational.rs::new` and `number.rs::to_rational`) are tech debt — migrate them
+  when you touch that code rather than copying the pattern.
+- **Code should be self-documenting; keep comments sparse.** Prefer clear names
+  and structure over explanatory comments. Document higher-level behaviour in
+  [`docs/`](docs/README.md), not in inline prose. When you add or change
+  behaviour, update the relevant design doc.
+- **Errors flow as `Result<_, CalcError>`**; the REPL prints eval errors and
+  continues.
+- **Keep arithmetic exact** (`Int`/`Rational`) and only fall back to `Float`
+  when unavoidable — match the promotion pattern in `number_op.rs`.
+- Small, dependency-light, std-plus-a-few-crates code; keep new code plain and
+  explicit (no heavy abstraction).
+
+## Testing strategy
+
+- **Keep coverage high, but prefer high-level tests.** Default to
+  integration/system tests that drive the program through the **main CLI
+  interface** (`calc <expr>` → assert on printed output), since that exercises
+  lex → parse → eval → format end to end.
+- **Reach for unit tests only when the logic is complex enough that local
+  edge-case coverage is worth it** (e.g. `Number` promotion in `number_op.rs`,
+  `Rational` normalization, `Number` `Display` rounding, unit conversion
+  factors). The existing `#[cfg(test)]` modules in `rational.rs` and `unit.rs`
+  are examples of this justified-unit-test case.
+- Before adding a unit test, ask whether the invariant could instead be a
+  compile-time guarantee (see principles above) or covered by a CLI-level test.
+
+## When in doubt, read the design docs
+
+Pull up the matching doc before changing these areas:
+
+- Tokenizing / number suffixes / adding a unit spelling → [docs/lexer.md](docs/lexer.md)
+- Grammar / precedence / operators / syntax → [docs/parser.md](docs/parser.md)
+- Number types / exactness / **output formatting** → [docs/numbers.md](docs/numbers.md)
+- Units / conversion factors / temperature → [docs/units.md](docs/units.md)
+- Exchange rates / currency codes / caching → [docs/currency.md](docs/currency.md)
+- AST / `eval` / unit-aware operators → [docs/evaluation.md](docs/evaluation.md)
+- Overall data flow / module layout / error handling → [docs/architecture.md](docs/architecture.md)
