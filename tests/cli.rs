@@ -90,28 +90,30 @@ fn rational_arithmetic_stays_exact() {
     check(&[
         ("7 / 2", "3.5"),
         ("1/2 + 1/2", "1"),
-        ("1/2 + 1/3", "0.833333…"),
-        ("1/3", "0.333333…"),
-        ("10 / 3", "3.333…"),
+        ("1/2 + 1/3", "0.8333…"),
+        ("1/3", "0.3333…"),
+        ("10 / 3", "3.3333…"),
     ]);
 }
 
 #[test]
 fn float_results() {
-    check(&[("2^0.5", "1.414…"), ("0.5", "0.5")]);
+    check(&[("2^0.5", "1.4142…"), ("0.5", "0.5")]);
 }
 
 #[test]
-fn number_formatting_suffixes_and_scientific() {
+fn number_formatting_plain_integers_and_scientific() {
     check(&[
-        ("3000", "3k"),
+        // integers print in full, no k/m suffixes (those are the fin formatter, plan 4)
+        ("3000", "3000"),
         ("1500", "1500"),
-        ("3k * 2", "6k"),
-        ("2m", "2m"),
-        ("1000000", "1m"),
-        ("1234567", "1.235m"),
-        ("1e9", "1.000000e9"),
-        ("1e12", "1.000000e12"),
+        ("3k * 2", "6000"),
+        ("2m", "2000000"),
+        ("1000000", "1000000"),
+        ("1234567", "1234567"),
+        // whole-valued floats also print as plain integers
+        ("1e9", "1000000000"),
+        ("1e12", "1000000000000"),
     ]);
 }
 
@@ -119,20 +121,20 @@ fn number_formatting_suffixes_and_scientific() {
 fn length_conversions() {
     check(&[
         ("5 m to cm", "500 cm"),
-        ("1 km to m", "1k m"),
+        ("1 km to m", "1000 m"),
         ("100 cm to m", "1 m"),
         ("1 inch to cm", "2.54 cm"),
         ("1 ft to inch", "12 \""),
-        ("1 mi to km", "1.609… km"),
+        ("1 mi to km", "1.6093… km"),
     ]);
 }
 
 #[test]
 fn mass_volume_time_conversions() {
     check(&[
-        ("1 gallon to l", "3.785… l"),
-        ("1 lb to kg", "0.453592… kg"),
-        ("2 kg to g", "2k g"),
+        ("1 gallon to l", "3.7854… l"),
+        ("1 lb to kg", "0.4536… kg"),
+        ("2 kg to g", "2000 g"),
         ("60 min to h", "1 h"),
     ]);
 }
@@ -199,7 +201,7 @@ fn repl_evaluates_lines_and_continues_incomplete_input() {
     // three complete entries, then an expression split across two lines (the
     // open paren keeps the parser waiting until it is closed).
     let out = eval_repl("2 + 2\n1/2 + 1/3\n(2 +\n3)\n");
-    assert_eq!(out, "4\n0.833333…\n5");
+    assert_eq!(out, "4\n0.8333…\n5");
 }
 
 /// Run the binary in one-shot mode with custom env overrides. Returns
@@ -273,6 +275,62 @@ fn config_first_run_bootstrap_creates_file() {
     // The bootstrap should have created conf.toml under the XDG config dir.
     let config_path = home.path().join(".config").join("calc").join("conf.toml");
     assert!(config_path.exists(), "bootstrap should have created {config_path:?}");
+}
+
+/// Run with a custom [format] section in the config and return trimmed stdout.
+fn eval_with_format_config(expr: &str, format_toml: &str) -> String {
+    let dir = tempfile::tempdir().expect("create temp dir");
+    let conf = dir.path().join("conf.toml");
+    std::fs::write(&conf, format!("[format]\n{}", format_toml)).expect("write config");
+    let (ok, out, _) = eval_with_env(expr, &[("CALC_CONFIG", conf.to_str().unwrap())], &[]);
+    assert!(ok, "calc failed for {expr:?} with config {format_toml:?}");
+    out
+}
+
+#[test]
+fn format_fixed_precision() {
+    // precision = 2: two decimal places
+    assert_eq!(eval_with_format_config("1/3", "precision = 2"), "0.33…");
+    assert_eq!(eval_with_format_config("1/2", "precision = 2"), "0.5");
+    // precision = 6: six decimal places
+    assert_eq!(eval_with_format_config("1/3", "precision = 6"), "0.333333…");
+}
+
+#[test]
+fn format_scientific_thresholds() {
+    // values below sci_lower or above sci_upper use scientific for non-whole floats
+    assert_eq!(eval_with_format_config("1.5e-8", ""), "1.5e-8");
+    assert_eq!(eval_with_format_config("1500000.5", ""), "1.5000…e6");
+    // scientific = false: always fixed-point regardless of magnitude
+    assert_eq!(
+        eval_with_format_config("1500000.5", "scientific = false"),
+        "1500000.5"
+    );
+}
+
+#[test]
+fn format_rational_mode() {
+    assert_eq!(eval_with_format_config("1/3", "rational = true"), "1/3");
+    assert_eq!(eval_with_format_config("5/6", "rational = true"), "5/6");
+    // whole-valued rational demotes to Int — printed as integer, not a/b
+    assert_eq!(eval_with_format_config("1/2 + 1/2", "rational = true"), "1");
+}
+
+#[test]
+fn format_int_scientific() {
+    // integers: scientific only when opted in above threshold
+    assert_eq!(
+        eval_with_format_config(
+            "1000000000000000",
+            "int_scientific = true\nint_sci_upper = 1e12"
+        ),
+        "1e15"
+    );
+    // below threshold: plain
+    assert_eq!(
+        eval_with_format_config("999", "int_scientific = true\nint_sci_upper = 1e12"),
+        "999"
+    );
 }
 
 /// Currency conversion hits the live MNB feed (or a same-day cache) and is not

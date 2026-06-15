@@ -59,24 +59,34 @@ Rules applied per operation:
 This is the layer to touch when changing **how exactness is preserved or when a
 fallback to float happens**.
 
-## Output formatting (`number.rs`, `Display`)
+## Output formatting (`number.rs`, `config.rs`)
 
-`Display for Number` is where results get their human-friendly shape. `Int`s and
-the float path use different rules:
+Formatting is driven by `format_number(&Number, &FormatOptions)` in `number.rs`,
+called from `Display for Number` with the current process config. `FormatOptions`
+lives under the `[format]` TOML key (see `config.rs`).
 
-- **Large magnitudes** get `k`/`m` suffixes: ≥1e6 → `…m`, ≥1e3 → `…k` (integers
-  only collapse to `k` when exactly divisible by 1000).
-- **Very large/small floats** (`≥1e9` or `<1e-3`) use scientific notation
-  (`{:.6e}`).
-- **Rounding** for display: floats are rounded to ~3 significant decimals (6 when
-  `<1`). If rounding lost information, a trailing **`…`** is appended to signal
-  the displayed value is approximate (e.g. `1/3` prints `0.833333…`).
-- `Rational` is displayed by first converting to `f64` and using the float path
-  — so the REPL shows decimals, not `5/6`. (The raw `a/b` form is only used by
-  `Rational`'s own `Display`, e.g. in debug output.)
+**Integers** (`Number::Int`) print in full precision with no suffix by default:
+`3000 → 3000`, `2000000 → 2000000`. Scientific notation is opt-in via
+`int_scientific = true` (threshold: `int_sci_upper`, default 1e15).
 
-If you want to change **how answers look** (precision, suffixes, sci-notation
-thresholds, the `…` marker), this `Display` impl is the single place to edit.
+**Whole-valued floats** (`Float(x)` where `x.fract() == 0`) are formatted
+identically to integers — they go through the integer path, not the float path.
 
-`debug.rs` also defines `Debug for Number` (delegating to `Display`) so AST dumps
-read naturally.
+**Floats and rationals** use one of three modes depending on magnitude and config:
+
+| Condition | Mode | Example |
+|-----------|------|---------|
+| `abs >= sci_upper` (1e6) or `0 < abs < sci_lower` (1e-6), `scientific = true` | scientific | `1.5e-8`, `1.5000…e6` |
+| otherwise | fixed-point | `3.3333…`, `0.5` |
+| `rational = true` + `Number::Rational` | fraction | `1/3`, `5/6` |
+
+**Precision and the `…` marker:**
+- Fixed-point: `precision` decimal places (default 4). If the rounded value equals
+  the original → trim trailing zeros (`3.5`, `0.5`). If rounded → pad to full
+  precision and append `…` (`3.3333…`, `1.4142…`).
+- Scientific: `sci_precision` mantissa decimals (default 4), same exact/approx
+  check via round-trip parse (`1.5e-8` exact → `1.5e-8`; `1.5000005e6` → `1.5000…e6`).
+
+`Rational` is formatted by converting to `f64` then applying the float rules
+(unless `rational = true`). `debug.rs` defines `Debug for Number` delegating to
+`Display` so AST dumps use the same rendering.

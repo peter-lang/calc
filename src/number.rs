@@ -1,5 +1,6 @@
 use std::fmt::{Display, Formatter};
 
+use crate::config::{self, FormatOptions};
 use crate::rational::Rational;
 
 #[derive(Clone, PartialEq)]
@@ -9,46 +10,81 @@ pub enum Number {
     Float(f64),
 }
 
+pub fn format_number(num: &Number, opts: &FormatOptions) -> String {
+    match num {
+        Number::Int(x) => format_int(*x, opts),
+        Number::Rational(r) => {
+            if opts.rational {
+                return format!("{}/{}", r.num, r.den);
+            }
+            let f: f64 = r.into();
+            format_float(f, opts)
+        }
+        Number::Float(x) => format_float(*x, opts),
+    }
+}
+
+fn format_int(x: i64, opts: &FormatOptions) -> String {
+    if opts.int_scientific && (x.abs() as f64) >= opts.int_sci_upper {
+        format_scientific(x as f64, opts.sci_precision)
+    } else {
+        format!("{}", x)
+    }
+}
+
+fn format_float(x: f64, opts: &FormatOptions) -> String {
+    if !x.is_finite() {
+        return format!("{}", x);
+    }
+    // Whole-valued floats render identically to integers.
+    if x.fract() == 0.0 && x.abs() <= i64::MAX as f64 {
+        return format_int(x as i64, opts);
+    }
+    let abs = x.abs();
+    if opts.scientific && (abs >= opts.sci_upper || (abs > 0.0 && abs < opts.sci_lower)) {
+        format_scientific(x, opts.sci_precision)
+    } else {
+        format_fixed(x, opts.precision)
+    }
+}
+
+fn format_fixed(x: f64, precision: u8) -> String {
+    let p = precision as usize;
+    let scale = 10f64.powi(precision as i32);
+    let rounded = (x * scale).round() / scale;
+    if rounded == x {
+        trim_zeros(format!("{:.prec$}", rounded, prec = p))
+    } else {
+        format!("{:.prec$}\u{2026}", rounded, prec = p)
+    }
+}
+
+fn format_scientific(x: f64, sci_precision: u8) -> String {
+    let p = sci_precision as usize;
+    // Let Rust's built-in produce a correctly-rounded mantissa string.
+    let raw = format!("{:.prec$e}", x, prec = p);
+    let (mant_str, exp_str) = raw.split_once('e').expect("scientific notation always has 'e'");
+    // Exactness: the rounded representation parses back to the original value.
+    let is_exact = raw.parse::<f64>().expect("valid float") == x;
+    let mant_out = if is_exact {
+        trim_zeros(mant_str.to_string())
+    } else {
+        format!("{}\u{2026}", mant_str)
+    };
+    format!("{}e{}", mant_out, exp_str)
+}
+
+fn trim_zeros(s: String) -> String {
+    if s.contains('.') {
+        s.trim_end_matches('0').trim_end_matches('.').to_string()
+    } else {
+        s
+    }
+}
+
 impl Display for Number {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        fn float_fmt(res: f64, f: &mut Formatter<'_>) -> std::fmt::Result {
-            let res_abs = res.abs();
-            if res_abs >= 1e9 || res_abs < 1e-3 {
-                write!(f, "{:.6e}", res)
-            } else if res_abs >= 1e6 {
-                let rounded = (res / 1e3).round() / 1e3;
-                write!(f, "{}m", rounded)
-            } else if res_abs >= 1e3 {
-                let rounded = res.round() / 1e3;
-                write!(f, "{}k", rounded)
-            } else if res_abs >= 1. {
-                let rounded = (res * 1e3).round() / 1e3;
-                let postfix = if rounded == res { "" } else { "…" };
-                write!(f, "{}{}", rounded, postfix)
-            } else {
-                let rounded = (res * 1e6).round() / 1e6;
-                let postfix = if rounded == res { "" } else { "…" };
-                write!(f, "{}{}", rounded, postfix)
-            }
-        }
-        match self {
-            Number::Int(res) => {
-                let res_abs = res.abs();
-                if res_abs >= 1_000_000 {
-                    let rounded = ((*res as f64) / 1e3).round() / 1e3;
-                    write!(f, "{}m", rounded)
-                } else if res_abs >= 1_000 && res_abs % 1_000 == 0 {
-                    write!(f, "{}k", res / 1_000)
-                } else {
-                    write!(f, "{}", res)
-                }
-            }
-            Number::Rational(x) => {
-                let res: f64 = x.into();
-                float_fmt(res, f)
-            }
-            Number::Float(res) => float_fmt(*res, f),
-        }
+        write!(f, "{}", format_number(self, &config::current().format))
     }
 }
 

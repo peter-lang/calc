@@ -10,10 +10,47 @@ use crate::files;
 
 static CONFIG: OnceLock<RwLock<Config>> = OnceLock::new();
 
-/// Top-level config struct. Extended by later plans via sub-tables.
-/// Every field must have `#[serde(default)]` so partial/empty files are valid.
 #[derive(Debug, Default, Deserialize)]
-pub struct Config {}
+pub struct Config {
+    #[serde(default)]
+    pub format: FormatOptions,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(default)]
+pub struct FormatOptions {
+    /// Fixed-point decimal places for floats / rationals.
+    pub precision: u8,
+    /// Enable scientific notation for floats/rationals outside [sci_lower, sci_upper].
+    pub scientific: bool,
+    /// |x| below this → scientific (only when `scientific` is true).
+    pub sci_lower: f64,
+    /// |x| above this → scientific (only when `scientific` is true).
+    pub sci_upper: f64,
+    /// Mantissa decimal places in scientific mode.
+    pub sci_precision: u8,
+    /// Print `Rational` values as `a/b` instead of decimals.
+    pub rational: bool,
+    /// Opt integers into scientific notation above `int_sci_upper`.
+    pub int_scientific: bool,
+    /// Integer scientific-notation threshold (only when `int_scientific` is true).
+    pub int_sci_upper: f64,
+}
+
+impl Default for FormatOptions {
+    fn default() -> Self {
+        Self {
+            precision: 4,
+            scientific: true,
+            sci_lower: 1e-6,
+            sci_upper: 1e6,
+            sci_precision: 4,
+            rational: false,
+            int_scientific: false,
+            int_sci_upper: 1e15,
+        }
+    }
+}
 
 pub fn init() -> Result<(), CalcError> {
     let config = load()?;
@@ -21,7 +58,6 @@ pub fn init() -> Result<(), CalcError> {
     Ok(())
 }
 
-#[allow(dead_code)]
 pub fn current() -> RwLockReadGuard<'static, Config> {
     CONFIG
         .get()
@@ -67,4 +103,14 @@ const DEFAULT_TEMPLATE: &str = "\
 #
 # Missing keys fall back to built-in defaults.
 # Edit this file to customise calc's behaviour.
+
+# [format]
+# precision      = 4      # fixed-point decimal places for floats / rationals
+# scientific     = true   # use scientific notation outside [sci_lower, sci_upper]
+# sci_lower      = 1e-6   # |x| below this threshold → scientific
+# sci_upper      = 1e6    # |x| above this threshold → scientific
+# sci_precision  = 4      # mantissa decimal places in scientific mode
+# rational       = false  # show exact fractions as a/b instead of decimals
+# int_scientific = false  # opt integers into scientific above int_sci_upper
+# int_sci_upper  = 1e15   # integer scientific threshold (only with int_scientific)
 ";
