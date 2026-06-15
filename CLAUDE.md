@@ -24,6 +24,7 @@ cargo build
 cargo run                 # REPL (rustyline, persistent history)
 cargo run -- <expr>       # evaluate once, e.g. cargo run -- 1/2 + 1/3
 cargo test                # tests live in rational.rs and unit.rs
+cargo fmt                 # always run before committing; enforces consistent style
 ```
 
 `Cargo.lock` is committed (binary crate).
@@ -94,6 +95,14 @@ Operators in the AST are **enum variants** (`BinaryOp`/`UnaryOp` in `value_op`);
   `get_default_factor` arm silently yields `ConversionError` at runtime.
 - **Operators are the `BinaryOp`/`UnaryOp` enums** in `value_op.rs`; add a variant
   plus its `apply`/`symbol` arms (exhaustiveness-checked) when adding an operator.
+
+## Before implementing
+
+Before writing any code, state the key trade-offs or side-effects of the
+approach — especially anything the user might not expect (type changes, format
+changes, extra dependencies, schema incompatibilities, …). Wait for confirmation
+before proceeding. The cost of pausing to confirm is low; the cost of undoing an
+unwanted approach is high.
 
 ## Engineering principles
 

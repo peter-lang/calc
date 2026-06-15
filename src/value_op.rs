@@ -1,6 +1,6 @@
-use crate::{number_op, unit};
 use crate::error::CalcError;
 use crate::value::Value;
+use crate::{number_op, unit};
 
 #[derive(Clone, Copy, PartialEq)]
 pub enum BinaryOp {

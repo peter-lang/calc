@@ -30,8 +30,8 @@ struct Envelope {
 }
 
 fn deserialize_rate<'de, D>(deserializer: D) -> Result<Rational, D::Error>
-    where
-        D: Deserializer<'de>,
+where
+    D: Deserializer<'de>,
 {
     let buf = String::deserialize(deserializer)?;
     let trimmed = buf.trim_end_matches('0');

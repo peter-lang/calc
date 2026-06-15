@@ -10,13 +10,13 @@ use crate::files;
 
 static CONFIG: OnceLock<RwLock<Config>> = OnceLock::new();
 
-#[derive(Debug, Default, Deserialize)]
+#[derive(Debug, Default, PartialEq, Deserialize)]
 pub struct Config {
     #[serde(default)]
     pub format: FormatOptions,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, PartialEq, Deserialize)]
 #[serde(default)]
 pub struct FormatOptions {
     /// Fixed-point decimal places for floats / rationals.
@@ -100,17 +100,26 @@ fn bootstrap(path: &Path) -> Result<(), CalcError> {
 
 const DEFAULT_TEMPLATE: &str = "\
 # calc configuration — ~/.config/calc/conf.toml
-#
 # Missing keys fall back to built-in defaults.
-# Edit this file to customise calc's behaviour.
 
-# [format]
-# precision      = 4      # fixed-point decimal places for floats / rationals
-# scientific     = true   # use scientific notation outside [sci_lower, sci_upper]
-# sci_lower      = 1e-6   # |x| below this threshold → scientific
-# sci_upper      = 1e6    # |x| above this threshold → scientific
-# sci_precision  = 4      # mantissa decimal places in scientific mode
-# rational       = false  # show exact fractions as a/b instead of decimals
-# int_scientific = false  # opt integers into scientific above int_sci_upper
-# int_sci_upper  = 1e15   # integer scientific threshold (only with int_scientific)
+[format]
+precision      = 4      # fixed-point decimal places for floats / rationals
+scientific     = true   # use scientific notation outside [sci_lower, sci_upper]
+sci_lower      = 1e-6   # |x| below this threshold → scientific
+sci_upper      = 1e6    # |x| above this threshold → scientific
+sci_precision  = 4      # mantissa decimal places in scientific mode
+rational       = false  # show exact fractions as a/b instead of decimals
+int_scientific = false  # opt integers into scientific above int_sci_upper
+int_sci_upper  = 1e15   # integer scientific threshold (only with int_scientific)
 ";
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn default_template_parses_to_default_format_options() {
+        let config: Config = toml::from_str(DEFAULT_TEMPLATE).expect("template must be valid TOML");
+        assert_eq!(config, Config::default());
+    }
+}

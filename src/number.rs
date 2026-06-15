@@ -63,7 +63,9 @@ fn format_scientific(x: f64, sci_precision: u8) -> String {
     let p = sci_precision as usize;
     // Let Rust's built-in produce a correctly-rounded mantissa string.
     let raw = format!("{:.prec$e}", x, prec = p);
-    let (mant_str, exp_str) = raw.split_once('e').expect("scientific notation always has 'e'");
+    let (mant_str, exp_str) = raw
+        .split_once('e')
+        .expect("scientific notation always has 'e'");
     // Exactness: the rounded representation parses back to the original value.
     let is_exact = raw.parse::<f64>().expect("valid float") == x;
     let mant_out = if is_exact {

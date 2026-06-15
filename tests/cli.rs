@@ -11,10 +11,14 @@ use std::io::Write;
 use std::process::{Command, Stdio};
 
 /// Run the built binary in one-shot mode with a single expression argument and
-/// return its trimmed stdout.
+/// return its trimmed stdout. CALC_CONFIG is pointed at a nonexistent path so
+/// the binary always uses FormatOptions::default(), independent of any config
+/// file on the developer's machine.
 fn eval(expr: &str) -> String {
+    let tmp = tempfile::tempdir().expect("create temp dir");
     let output = Command::new(env!("CARGO_BIN_EXE_calc"))
         .arg(expr)
+        .env("CALC_CONFIG", tmp.path().join("nonexistent.toml"))
         .output()
         .expect("failed to run calc binary");
     assert!(
@@ -232,11 +236,7 @@ fn repl_evaluates_lines_and_continues_incomplete_input() {
 
 /// Run the binary in one-shot mode with custom env overrides. Returns
 /// `(success, stdout, stderr)`.
-fn eval_with_env(
-    expr: &str,
-    set: &[(&str, &str)],
-    unset: &[&str],
-) -> (bool, String, String) {
+fn eval_with_env(expr: &str, set: &[(&str, &str)], unset: &[&str]) -> (bool, String, String) {
     let mut cmd = Command::new(env!("CARGO_BIN_EXE_calc"));
     cmd.arg(expr);
     for (k, v) in set {
@@ -246,8 +246,14 @@ fn eval_with_env(
         cmd.env_remove(k);
     }
     let output = cmd.output().expect("failed to run calc binary");
-    let stdout = String::from_utf8(output.stdout).expect("utf-8").trim_end().to_string();
-    let stderr = String::from_utf8(output.stderr).expect("utf-8").trim_end().to_string();
+    let stdout = String::from_utf8(output.stdout)
+        .expect("utf-8")
+        .trim_end()
+        .to_string();
+    let stderr = String::from_utf8(output.stderr)
+        .expect("utf-8")
+        .trim_end()
+        .to_string();
     (output.status.success(), stdout, stderr)
 }
 
@@ -266,12 +272,11 @@ fn config_valid_calc_config_env() {
 fn config_missing_calc_config_path_uses_defaults() {
     let dir = tempfile::tempdir().expect("create temp dir");
     let missing = dir.path().join("nonexistent.toml"); // deliberately not created
-    let (ok, out, _) = eval_with_env(
-        "2+2",
-        &[("CALC_CONFIG", missing.to_str().unwrap())],
-        &[],
+    let (ok, out, _) = eval_with_env("2+2", &[("CALC_CONFIG", missing.to_str().unwrap())], &[]);
+    assert!(
+        ok,
+        "missing CALC_CONFIG path should use defaults, not error"
     );
-    assert!(ok, "missing CALC_CONFIG path should use defaults, not error");
     assert_eq!(out, "4");
 }
 
@@ -302,11 +307,14 @@ fn config_first_run_bootstrap_creates_file() {
 
     // The bootstrap should have created conf.toml under the XDG config dir.
     let config_path = home.path().join(".config").join("calc").join("conf.toml");
-    assert!(config_path.exists(), "bootstrap should have created {config_path:?}");
+    assert!(
+        config_path.exists(),
+        "bootstrap should have created {config_path:?}"
+    );
     let content = std::fs::read_to_string(&config_path).expect("read bootstrapped config");
     assert!(
-        content.contains("calc configuration"),
-        "bootstrapped file should contain the documented template header"
+        content.contains("[format]"),
+        "bootstrapped file should contain a [format] section, got: {content:?}"
     );
 }
 

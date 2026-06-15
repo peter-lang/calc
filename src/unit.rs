@@ -1,7 +1,7 @@
-use crate::{currency, number_op};
 use crate::error::CalcError;
 use crate::number::Number;
 use crate::rational::Rational;
+use crate::{currency, number_op};
 
 #[derive(PartialEq)]
 pub enum UnitType {

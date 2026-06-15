@@ -1,7 +1,7 @@
 use regex::{Captures, Regex};
 use strum::EnumCount;
 
-use super::token::{CURRENCIES_PATTERN, Token};
+use super::token::{Token, CURRENCIES_PATTERN};
 
 pub struct Lexer {
     patterns: Regex,
@@ -112,7 +112,7 @@ impl Lexer {
         return Token::INVALID(String::from(""));
     }
 
-    pub fn parse<'a>(&'a self, text: &'a str) -> impl Iterator<Item=Token> + 'a {
+    pub fn parse<'a>(&'a self, text: &'a str) -> impl Iterator<Item = Token> + 'a {
         self.patterns.captures_iter(text).map(Lexer::map_captures)
     }
 }

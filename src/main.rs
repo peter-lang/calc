@@ -1,7 +1,7 @@
 use std::env;
 
-use rustyline::DefaultEditor;
 use rustyline::error::ReadlineError;
+use rustyline::DefaultEditor;
 
 use crate::error::CalcError;
 use crate::parser::lexer::Lexer;

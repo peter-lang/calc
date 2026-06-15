@@ -1,11 +1,11 @@
 use std::collections::HashMap;
 
-use crate::unit;
-use crate::value_op::{BinaryOp, UnaryOp};
 use crate::node::Node;
 use crate::number::Number;
-use crate::parser::token::{CURRENCIES, Token};
+use crate::parser::token::{Token, CURRENCIES};
+use crate::unit;
 use crate::unit::Unit;
+use crate::value_op::{BinaryOp, UnaryOp};
 
 #[derive(Clone)]
 enum Match<T> {
@@ -32,7 +32,7 @@ impl Parser {
         self.tokens.is_empty()
     }
 
-    pub fn extend(&mut self, tokens: impl IntoIterator<Item=Token>) {
+    pub fn extend(&mut self, tokens: impl IntoIterator<Item = Token>) {
         self.tokens.extend(tokens);
     }
 
