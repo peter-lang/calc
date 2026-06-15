@@ -7,6 +7,7 @@ use crate::error::CalcError;
 use crate::parser::lexer::Lexer;
 use crate::parser::parser::Parser;
 
+mod config;
 mod currency;
 mod debug;
 mod error;
@@ -21,6 +22,7 @@ mod value;
 mod value_op;
 
 fn main() -> Result<(), CalcError> {
+    config::init()?;
     let path_cache_history = files::cache("history.txt")?;
 
     let lexer = Lexer::new();

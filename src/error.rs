@@ -24,6 +24,8 @@ pub enum CalcError {
     IoError(#[from] std::io::Error),
     #[error(transparent)]
     DeError(#[from] quick_xml::DeError),
+    #[error("Config error: {0}")]
+    ConfigError(String),
     #[error(transparent)]
     ErrorRef(#[from] &'static CalcError),
 }

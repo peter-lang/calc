@@ -28,13 +28,15 @@ fn eval(expr: &str) -> String {
 }
 
 /// Drive the interactive REPL: feed `input` on stdin (each line is one REPL
-/// entry) and return trimmed stdout. HOME is redirected to a throwaway dir so
-/// the REPL's history cache never touches the real one.
+/// entry) and return trimmed stdout. A fresh temp dir stands in for HOME so
+/// the real history/cache/config files are never touched; it is deleted on drop.
 fn eval_repl(input: &str) -> String {
-    let home = std::env::temp_dir().join("calc-repl-test-home");
+    let home = tempfile::tempdir().expect("create temp home dir");
     let mut child = Command::new(env!("CARGO_BIN_EXE_calc"))
-        .env("HOME", &home)
+        .env("HOME", home.path())
         .env_remove("XDG_CACHE_HOME")
+        .env_remove("XDG_CONFIG_HOME")
+        .env_remove("CALC_CONFIG")
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
         .spawn()
@@ -46,6 +48,7 @@ fn eval_repl(input: &str) -> String {
         .write_all(input.as_bytes())
         .expect("failed to write stdin");
     let output = child.wait_with_output().expect("failed to wait for REPL");
+    // home dropped here — temp dir cleaned up
     String::from_utf8(output.stdout)
         .expect("stdout was not utf-8")
         .trim_end()
@@ -197,6 +200,79 @@ fn repl_evaluates_lines_and_continues_incomplete_input() {
     // open paren keeps the parser waiting until it is closed).
     let out = eval_repl("2 + 2\n1/2 + 1/3\n(2 +\n3)\n");
     assert_eq!(out, "4\n0.833333…\n5");
+}
+
+/// Run the binary in one-shot mode with custom env overrides. Returns
+/// `(success, stdout, stderr)`.
+fn eval_with_env(
+    expr: &str,
+    set: &[(&str, &str)],
+    unset: &[&str],
+) -> (bool, String, String) {
+    let mut cmd = Command::new(env!("CARGO_BIN_EXE_calc"));
+    cmd.arg(expr);
+    for (k, v) in set {
+        cmd.env(k, v);
+    }
+    for k in unset {
+        cmd.env_remove(k);
+    }
+    let output = cmd.output().expect("failed to run calc binary");
+    let stdout = String::from_utf8(output.stdout).expect("utf-8").trim_end().to_string();
+    let stderr = String::from_utf8(output.stderr).expect("utf-8").trim_end().to_string();
+    (output.status.success(), stdout, stderr)
+}
+
+#[test]
+fn config_valid_calc_config_env() {
+    let dir = tempfile::tempdir().expect("create temp dir");
+    let conf = dir.path().join("conf.toml");
+    // an empty file is valid TOML and should fall back to defaults
+    std::fs::write(&conf, "").expect("write empty config");
+    let (ok, out, _) = eval_with_env("2+2", &[("CALC_CONFIG", conf.to_str().unwrap())], &[]);
+    assert!(ok, "calc should succeed with an empty config file");
+    assert_eq!(out, "4");
+}
+
+#[test]
+fn config_missing_calc_config_path_uses_defaults() {
+    let (ok, out, _) = eval_with_env(
+        "2+2",
+        &[("CALC_CONFIG", "/tmp/calc-this-file-does-not-exist-xyzzy.toml")],
+        &[],
+    );
+    assert!(ok, "missing CALC_CONFIG path should use defaults, not error");
+    assert_eq!(out, "4");
+}
+
+#[test]
+fn config_malformed_calc_config_errors() {
+    let dir = tempfile::tempdir().expect("create temp dir");
+    let conf = dir.path().join("conf.toml");
+    std::fs::write(&conf, "[[not valid toml !!!").expect("write bad config");
+    let (ok, _, err) = eval_with_env("2+2", &[("CALC_CONFIG", conf.to_str().unwrap())], &[]);
+    assert!(!ok, "malformed config should cause non-zero exit");
+    // Rust's main() Result prints via Debug, so the variant name appears.
+    assert!(
+        err.contains("ConfigError"),
+        "stderr should mention ConfigError, got: {err:?}"
+    );
+}
+
+#[test]
+fn config_first_run_bootstrap_creates_file() {
+    let home = tempfile::tempdir().expect("create temp home dir");
+    let (ok, out, _) = eval_with_env(
+        "1+1",
+        &[("HOME", home.path().to_str().unwrap())],
+        &["CALC_CONFIG", "XDG_CONFIG_HOME"],
+    );
+    assert!(ok, "first-run should succeed");
+    assert_eq!(out, "2");
+
+    // The bootstrap should have created conf.toml under the XDG config dir.
+    let config_path = home.path().join(".config").join("calc").join("conf.toml");
+    assert!(config_path.exists(), "bootstrap should have created {config_path:?}");
 }
 
 /// Currency conversion hits the live MNB feed (or a same-day cache) and is not
