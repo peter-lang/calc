@@ -159,6 +159,23 @@ A plan typically has: goal, a verification gate (how you'll know each step is
 done), ordered steps with risk/notes, and a progress checklist used as the resume
 point.
 
+## Commits & pushing
+
+- **Message header:** `type(scope): title`
+  - `type` is one of `fix` (bug fix), `feat` (feature / new development), or
+    `chore` (maintenance — dependency bumps, docs, tooling, plans).
+  - `scope` is the module or concept touched (`parser`, `deps`, `value_op`,
+    `docs`, `plans`, …) so it's clear what changed.
+  - `title` is a short, imperative, lower-case summary.
+- **Body:** explain the **intent and rationale**, briefly. Don't narrate the diff
+  or go into much detail.
+- **Authorship:** the user is the author and committer — they review and take
+  responsibility. Keep the `Co-Authored-By: Claude …` trailer for attribution;
+  never set yourself as author.
+- **Pushing is the user's call.** Commit locally as you go, but **do not push
+  without explicit confirmation** — ask each time, or better, leave the commits
+  for the user to review and push themselves.
+
 ## When in doubt, read the design docs
 
 Pull up the matching doc before changing these areas:
