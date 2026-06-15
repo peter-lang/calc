@@ -136,6 +136,10 @@ local style where the two conflict.
   are examples of this justified-unit-test case.
 - Before adding a unit test, ask whether the invariant could instead be a
   compile-time guarantee (see principles above) or covered by a CLI-level test.
+- **Verify behaviour through the test package, not ad-hoc runs.** To check that a
+  change works, add/extend cases in `tests/cli.rs` and run `cargo test` — don't
+  invoke the built binary directly in shell loops. It keeps verification
+  reproducible and avoids one-off risky shell commands.
 
 ## Planning (`docs/plans/`)
 
@@ -175,6 +179,11 @@ point.
 - **Pushing is the user's call.** Commit locally as you go, but **do not push
   without explicit confirmation** — ask each time, or better, leave the commits
   for the user to review and push themselves.
+- **Commit with plain, standalone commands** so the permission allow-rules match
+  and don't re-prompt: run `git commit` on its own (not chained via `&&` with
+  `git add`/`git log`) and pass the message as repeated `-m` flags. **Avoid**
+  `git commit -m "$(cat <<EOF …)"` — command substitution is dynamic, so Claude
+  Code can't match it against a stored permission and re-prompts every time.
 
 ## When in doubt, read the design docs
 
