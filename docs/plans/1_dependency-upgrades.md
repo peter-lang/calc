@@ -136,7 +136,9 @@ Semver-compatible, no source changes. Grouped because none can break.
 - [x] Step 4b (follow-up surfaced by 1.96): replaced `fn`-pointer operators with
       `BinaryOp`/`UnaryOp` enums (`apply`/`symbol`). Fixes the 6 warnings, removes
       the risky pointer comparison, and updates the affected docs.
-- [ ] Step 5: `quick-xml` 0.32 → 0.40
+- [x] Step 5: `quick-xml` 0.32 → 0.40 — only the serde feature renamed
+      (`["serde","serialize"]` → `["serialize"]`); deserialization validated against
+      the live MNB feed
 - [ ] Step 6: `ureq` 2 → 3
 - [ ] Step 7: `rustyline` 14 → 18
 

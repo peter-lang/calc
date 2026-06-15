@@ -10,6 +10,6 @@ rustyline = "14.0.0"
 thiserror = "2.0.18"
 etcetera = "0.11"
 ureq = "2.9.7"
-quick-xml = { version = "0.32.0", features = ["serde", "serialize"] }
+quick-xml = { version = "0.40.0", features = ["serialize"] }
 serde = { version = "1.0.228", features = ["derive"] }
 chrono = { version = "0.4.45", features = ["serde"] }
