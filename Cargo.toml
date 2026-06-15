@@ -7,7 +7,7 @@ edition = "2021"
 regex = "1.12.4"
 variant_count = "1.1.0"
 rustyline = "14.0.0"
-thiserror = "1.0.61"
+thiserror = "2.0.18"
 directories = "5.0.1"
 ureq = "2.9.7"
 quick-xml = { version = "0.32.0", features = ["serde", "serialize"] }

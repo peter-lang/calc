@@ -127,7 +127,7 @@ Semver-compatible, no source changes. Grouped because none can break.
 - [x] Prerequisite: fix test compilation (`src/unit.rs`) — *working tree, uncommitted*
 - [x] Prerequisite: CLI characterization tests (`tests/cli.rs`) — *working tree, uncommitted*
 - [x] Step 1: minor bumps `serde`/`regex`/`chrono` — *working tree, uncommitted*
-- [ ] Step 2: `thiserror` 1 → 2
+- [x] Step 2: `thiserror` 1 → 2 — *no source changes; transparent*
 - [ ] Step 3: `variant_count` → `strum`
 - [ ] Step 4: `directories` → `etcetera`
 - [ ] Step 5: `quick-xml` 0.32 → 0.40
