@@ -7,6 +7,7 @@ use chrono::{Days, NaiveDate, Utc};
 use quick_xml::de;
 use serde::{Deserialize, Deserializer};
 
+use crate::currency::RateProvider;
 use crate::error::CalcError;
 use crate::files;
 use crate::rational::Rational;
@@ -116,43 +117,42 @@ fn to_map(rates: Vec<MNBCurrentExchangeRate>) -> HashMap<String, Rational> {
         .collect()
 }
 
-pub fn convert(from: &str, to: &str) -> Result<Rational, CalcError> {
-    static RATES: OnceLock<Result<HashMap<String, Rational>, CalcError>> = OnceLock::new();
-    let map = RATES
-        .get_or_init(|| {
-            let today = Utc::now().date_naive();
-            let yesterday = today - Days::new(1);
-            if let Some(content) = read_current_rate_xml_file() {
-                let rates: MNBCurrentExchangeRates = de::from_str(content.as_str())?;
-                if rates.day.date == today || rates.day.date == yesterday {
-                    return Ok(to_map(rates.day.rates));
-                }
-            }
-            let content = fetch_current_rate_xml()?;
-            save_current_rate_xml_file(content.as_str());
-            let rates: MNBCurrentExchangeRates = de::from_str(content.as_str())?;
-            return Ok(to_map(rates.day.rates));
-        })
-        .as_ref()?;
+pub struct MnbProvider;
 
-    const BASE_CURRENCY: &'static str = "HUF";
-    return if from == BASE_CURRENCY {
-        let Some(inv_rate) = map.get(to) else {
-            return Err(CalcError::ConversionError);
-        };
-        Ok(inv_rate.invert()?)
-    } else if to == BASE_CURRENCY {
-        let Some(rate) = map.get(from) else {
-            return Err(CalcError::ConversionError);
-        };
-        Ok(rate.clone())
-    } else {
-        let Some(inv_rate) = map.get(to) else {
-            return Err(CalcError::ConversionError);
-        };
-        let Some(rate) = map.get(from) else {
-            return Err(CalcError::ConversionError);
-        };
-        Ok(inv_rate.invert()? * rate.clone())
-    };
+impl RateProvider for MnbProvider {
+    fn id(&self) -> &str {
+        "mnb"
+    }
+
+    fn convert(&self, from: &str, to: &str) -> Result<Rational, CalcError> {
+        static RATES: OnceLock<Result<HashMap<String, Rational>, CalcError>> = OnceLock::new();
+        let map = RATES
+            .get_or_init(|| {
+                let today = Utc::now().date_naive();
+                let yesterday = today - Days::new(1);
+                if let Some(content) = read_current_rate_xml_file() {
+                    let rates: MNBCurrentExchangeRates = de::from_str(content.as_str())?;
+                    if rates.day.date == today || rates.day.date == yesterday {
+                        return Ok(to_map(rates.day.rates));
+                    }
+                }
+                let content = fetch_current_rate_xml()?;
+                save_current_rate_xml_file(content.as_str());
+                let rates: MNBCurrentExchangeRates = de::from_str(content.as_str())?;
+                return Ok(to_map(rates.day.rates));
+            })
+            .as_ref()?;
+
+        const BASE: &str = "HUF";
+        if from == BASE {
+            let inv_rate = map.get(to).ok_or(CalcError::ConversionError)?;
+            inv_rate.invert()
+        } else if to == BASE {
+            map.get(from).cloned().ok_or(CalcError::ConversionError)
+        } else {
+            let inv_rate = map.get(to).ok_or(CalcError::ConversionError)?;
+            let rate = map.get(from).ok_or(CalcError::ConversionError)?;
+            Ok(inv_rate.invert()? * rate.clone())
+        }
+    }
 }

@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use std::env;
 use std::fs;
 use std::path::Path;
@@ -14,6 +15,24 @@ static CONFIG: OnceLock<RwLock<Config>> = OnceLock::new();
 pub struct Config {
     #[serde(default)]
     pub format: FormatOptions,
+    #[serde(default)]
+    pub currency: CurrencyConfig,
+}
+
+#[derive(Debug, Default, PartialEq, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum CurrencyProvider {
+    #[default]
+    Mnb,
+    Static,
+}
+
+#[derive(Debug, Default, PartialEq, Deserialize)]
+#[serde(default)]
+pub struct CurrencyConfig {
+    pub provider: CurrencyProvider,
+    #[serde(rename = "static")]
+    pub static_rates: HashMap<String, f64>,
 }
 
 #[derive(Debug, Clone, PartialEq, Default, Deserialize)]
@@ -197,6 +216,13 @@ fn bootstrap(path: &Path) -> Result<(), CalcError> {
 const DEFAULT_TEMPLATE: &str = "\
 # calc configuration — ~/.config/calc/conf.toml
 # Missing keys fall back to built-in defaults.
+
+# [currency]
+# provider = \"mnb\"    # mnb (default) or static
+#
+# # static: fixed rates for offline use / deterministic tests; direct lookup only
+# # [currency.static]
+# # \"EUR/USD\" = 1.08
 
 [format]
 repr = \"float\"  # fixed | float | sci | rational | financial

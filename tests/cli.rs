@@ -491,6 +491,16 @@ fn ans_keyword() {
     assert_eq!(out, "0.8333\u{2026}\n5/6");
 }
 
+#[test]
+fn currency_static_provider() {
+    const CONFIG: &str = "[currency]\nprovider = \"static\"\n\n[currency.static]\n\"EUR/USD\" = 1.08\n\"USD/HUF\" = 360.0\n";
+    // direct lookup: configured pairs work exactly
+    assert_eq!(eval_with_format_config("100 EUR to USD", CONFIG), "108 USD");
+    assert_eq!(eval_with_format_config("1 USD to HUF", CONFIG), "360 HUF");
+    // inverse not configured → conversion error (no auto-fill)
+    assert_eq!(eval_with_format_config("100 USD to EUR", CONFIG), "Conversion error");
+}
+
 /// Currency conversion hits the live MNB feed (or a same-day cache) and is not
 /// deterministic, so it is excluded from the default run. Execute explicitly
 /// with `cargo test -- --ignored` when a network check is wanted.
