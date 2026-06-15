@@ -16,7 +16,7 @@ pub struct Config {
     pub format: FormatOptions,
 }
 
-#[derive(Debug, PartialEq, Default, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Default, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum NumberRepr {
     Fixed,
@@ -27,7 +27,7 @@ pub enum NumberRepr {
     Financial,
 }
 
-#[derive(Debug, PartialEq, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Deserialize)]
 #[serde(default)]
 pub struct FormatOptions {
     pub repr: NumberRepr,
@@ -37,7 +37,7 @@ pub struct FormatOptions {
     pub int: IntConfig,
 }
 
-#[derive(Debug, PartialEq, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Deserialize)]
 #[serde(default)]
 pub struct FloatConfig {
     pub precision: u8,
@@ -46,23 +46,62 @@ pub struct FloatConfig {
     pub sci_upgrade_upper: f64,
 }
 
-#[derive(Debug, PartialEq, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Deserialize)]
 #[serde(default)]
 pub struct SciConfig {
     pub precision: u8,
 }
 
-#[derive(Debug, PartialEq, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Deserialize)]
 #[serde(default)]
 pub struct FinConfig {
     pub precision: u8,
 }
 
-#[derive(Debug, PartialEq, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Deserialize)]
 #[serde(default)]
 pub struct IntConfig {
     pub sci_upgrade: bool,
     pub sci_upgrade_upper: f64,
+}
+
+pub enum FormatSpec {
+    Fixed { precision: Option<u8> },
+    Float,
+    Sci { precision: Option<u8> },
+    Rational,
+    Financial { precision: Option<u8> },
+}
+
+pub fn apply_spec(base: &FormatOptions, spec: &FormatSpec) -> FormatOptions {
+    let mut opts = base.clone();
+    match spec {
+        FormatSpec::Fixed { precision } => {
+            opts.repr = NumberRepr::Fixed;
+            if let Some(p) = precision {
+                opts.float.precision = *p;
+            }
+        }
+        FormatSpec::Float => {
+            opts.repr = NumberRepr::Float;
+        }
+        FormatSpec::Sci { precision } => {
+            opts.repr = NumberRepr::Sci;
+            if let Some(p) = precision {
+                opts.sci.precision = *p;
+            }
+        }
+        FormatSpec::Rational => {
+            opts.repr = NumberRepr::Rational;
+        }
+        FormatSpec::Financial { precision } => {
+            opts.repr = NumberRepr::Financial;
+            if let Some(p) = precision {
+                opts.fin.precision = *p;
+            }
+        }
+    }
+    opts
 }
 
 impl Default for FormatOptions {

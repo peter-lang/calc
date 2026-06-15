@@ -1,12 +1,21 @@
 use std::fmt::{Display, Formatter};
 
-use crate::number::Number;
+use crate::config::FormatOptions;
+use crate::number::{format_number, Number};
 use crate::unit::{get_unit_name, Unit};
 
 #[derive(Clone)]
 pub struct Value {
     pub num: Number,
     pub unit: Option<Unit>,
+}
+
+pub fn format_value(val: &Value, opts: &FormatOptions) -> String {
+    if let Some(unit) = &val.unit {
+        format!("{} {}", format_number(&val.num, opts), get_unit_name(unit))
+    } else {
+        format_number(&val.num, opts)
+    }
 }
 
 impl Display for Value {

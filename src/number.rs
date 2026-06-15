@@ -25,13 +25,16 @@ pub fn format_number(num: &Number, opts: &FormatOptions) -> String {
 }
 
 fn format_int(x: i64, opts: &FormatOptions) -> String {
-    if matches!(opts.repr, NumberRepr::Financial) && (x.unsigned_abs() as f64) >= 1e6 {
-        return format_financial(x as f64, opts.fin.precision);
-    }
-    if opts.int.sci_upgrade && (x.unsigned_abs() as f64) >= opts.int.sci_upgrade_upper {
-        format_scientific(x as f64, opts.sci.precision)
-    } else {
-        format!("{}", x)
+    match opts.repr {
+        NumberRepr::Financial => format_financial(x as f64, opts.fin.precision),
+        NumberRepr::Sci => format_scientific(x as f64, opts.sci.precision),
+        _ => {
+            if opts.int.sci_upgrade && (x.unsigned_abs() as f64) >= opts.int.sci_upgrade_upper {
+                format_scientific(x as f64, opts.sci.precision)
+            } else {
+                format!("{}", x)
+            }
+        }
     }
 }
 
@@ -62,9 +65,21 @@ fn format_float(x: f64, opts: &FormatOptions) -> String {
 
 fn format_financial(x: f64, precision: u8) -> String {
     if x.abs() >= 1e6 {
-        format!("{}m", format_fixed(x / 1e6, precision))
+        format!("{}m", format_financial_fixed(x / 1e6, precision))
     } else {
-        format_fixed(x, precision)
+        format_financial_fixed(x, precision)
+    }
+}
+
+// Like format_fixed but does not trim trailing zeros (financial display preserves precision).
+fn format_financial_fixed(x: f64, precision: u8) -> String {
+    let p = precision as usize;
+    let scale = 10f64.powi(precision as i32);
+    let rounded = (x * scale).round() / scale;
+    if rounded == x {
+        format!("{:.prec$}", rounded, prec = p)
+    } else {
+        format!("{:.prec$}\u{2026}", rounded, prec = p)
     }
 }
 

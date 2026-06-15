@@ -416,6 +416,59 @@ fn format_sci_precision() {
     assert_eq!(eval_with_format_config("2250000.75", ""), "2.2500…e6");
 }
 
+#[test]
+fn format_operator_rational() {
+    assert_eq!(eval("1/3 | rat"), "1/3");
+    assert_eq!(eval("1/3 | rational"), "1/3");
+    assert_eq!(eval("5/6 | rat"), "5/6");
+    // whole-valued result: demotes to Int, printed without fraction
+    assert_eq!(eval("1/2 + 1/2 | rat"), "1");
+}
+
+#[test]
+fn format_operator_fixed() {
+    assert_eq!(eval("1/3 | fixed 6"), "0.333333\u{2026}");
+    assert_eq!(eval("1500000.5 | fixed"), "1500000.5");
+    assert_eq!(eval("1/3 | fixed"), "0.3333\u{2026}");
+}
+
+#[test]
+fn format_operator_sci() {
+    assert_eq!(eval("1/1000000 | sci"), "1e-6");
+    assert_eq!(eval("1/3 | sci 2"), "3.33\u{2026}e-1");
+}
+
+#[test]
+fn format_operator_financial() {
+    assert_eq!(eval("1234567 | fin"), "1.23\u{2026}m");
+    assert_eq!(eval("1234567 | fin 0"), "1\u{2026}m");
+    assert_eq!(eval("1234567 | financial"), "1.23\u{2026}m");
+    // negative values preserve sign
+    assert_eq!(eval("-1234567 | fin"), "-1.23\u{2026}m");
+    // small values: no suffix
+    assert_eq!(eval("42 | fin"), "42.00");
+}
+
+#[test]
+fn format_operator_float() {
+    // float with sci_upgrade: large values auto-upgrade to sci
+    assert_eq!(eval("1500000.5 | float"), "1.5000\u{2026}e6");
+    // float is also the default, so same as no spec for non-extreme values
+    assert_eq!(eval("1/3 | float"), "0.3333\u{2026}");
+}
+
+#[test]
+fn format_operator_with_unit() {
+    // the | spec applies to the number part; the unit is still rendered
+    assert_eq!(eval("1000000 m | sci"), "1e6 m");
+}
+
+#[test]
+fn format_operator_unknown_produces_no_output() {
+    // unknown formatter name: expression fails to parse, no output
+    assert_eq!(eval("1/3 | bogus"), "");
+}
+
 /// Currency conversion hits the live MNB feed (or a same-day cache) and is not
 /// deterministic, so it is excluded from the default run. Execute explicitly
 /// with `cargo test -- --ignored` when a network check is wanted.

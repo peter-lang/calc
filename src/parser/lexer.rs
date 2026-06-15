@@ -42,6 +42,10 @@ static PATTERNS: [(&'static str, fn(&str) -> Token); Token::COUNT] = [
     ("/", |_| Token::Div),
     ("%", |_| Token::Mod),
     ("to", |_| Token::KwTo),
+    ("fixed", |_| Token::KwFixed),
+    ("float", |_| Token::KwFloat),
+    ("sci", |_| Token::KwSci),
+    ("financial|fin", |_| Token::KwFin),
     (CURRENCIES_PATTERN, |x| {
         Token::Curr(String::from(x.to_ascii_uppercase()))
     }),
@@ -84,6 +88,7 @@ static PATTERNS: [(&'static str, fn(&str) -> Token); Token::COUNT] = [
     ("F|f", |_| Token::TempF),
     ("g", |_| Token::MassG),
     ("liter|l", |_| Token::VolLiter),
+    (r"\|", |_| Token::Pipe),
     ("[A-Za-z_][A-Za-z0-9_]*", |x| Token::Ident(String::from(x))),
     (r"\S+", |x| Token::INVALID(String::from(x))),
 ];

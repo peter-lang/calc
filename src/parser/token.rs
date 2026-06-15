@@ -11,6 +11,10 @@ pub enum Token {
     Div,      // /
     Mod,      // %
     KwTo,     // to
+    KwFixed,  // fixed (formatter)
+    KwFloat,  // float (formatter)
+    KwSci,    // sci (formatter)
+    KwFin,    // fin, financial (formatter)
 
     LitFloat(f64), // float
     LitInt(i64),   // int
@@ -58,6 +62,8 @@ pub enum Token {
     TimeSec,  // s, sec
     TimeMin,  // min
     TimeHour, // hour, hr
+
+    Pipe, // |
 
     Ident(String),
 

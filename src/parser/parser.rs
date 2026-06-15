@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 
+use crate::config::FormatSpec;
 use crate::node::Node;
 use crate::number::Number;
 use crate::parser::token::{Token, CURRENCIES};
@@ -40,16 +41,58 @@ impl Parser {
         self.tokens.clear();
     }
 
-    pub fn parse(&mut self) -> Option<Node> {
+    pub fn parse(&mut self) -> Option<(Node, Option<FormatSpec>)> {
         // TODO: we should be able to re-use the previous computations
         self.memos.clear();
         let pos_end = self.tokens.len();
         if let Match::Ok(node, pos) = self.expression(0) {
             if pos == pos_end {
-                return Some(node);
+                return Some((node, None));
+            }
+            if let Some((spec, next)) = self.parse_format_clause(pos) {
+                if next == pos_end {
+                    return Some((node, Some(spec)));
+                }
             }
         }
         return None;
+    }
+
+    fn parse_format_clause(&self, pos: usize) -> Option<(FormatSpec, usize)> {
+        let pos = self.expect(pos, Token::Pipe)?;
+        if pos >= self.tokens.len() {
+            return None;
+        }
+        match &self.tokens[pos] {
+            Token::KwFixed => {
+                let (precision, pos) = self.expect_precision(pos + 1);
+                Some((FormatSpec::Fixed { precision }, pos))
+            }
+            Token::KwFloat => Some((FormatSpec::Float, pos + 1)),
+            Token::KwSci => {
+                let (precision, pos) = self.expect_precision(pos + 1);
+                Some((FormatSpec::Sci { precision }, pos))
+            }
+            Token::KwFin => {
+                let (precision, pos) = self.expect_precision(pos + 1);
+                Some((FormatSpec::Financial { precision }, pos))
+            }
+            Token::Ident(s) if s == "rat" || s == "rational" => {
+                Some((FormatSpec::Rational, pos + 1))
+            }
+            _ => None,
+        }
+    }
+
+    fn expect_precision(&self, pos: usize) -> (Option<u8>, usize) {
+        if pos < self.tokens.len() {
+            if let &Token::LitInt(n) = &self.tokens[pos] {
+                if (0..=255).contains(&n) {
+                    return (Some(n as u8), pos + 1);
+                }
+            }
+        }
+        (None, pos)
     }
 
     fn memoize(

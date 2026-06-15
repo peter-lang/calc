@@ -6,6 +6,7 @@ use rustyline::DefaultEditor;
 use crate::error::CalcError;
 use crate::parser::lexer::Lexer;
 use crate::parser::parser::Parser;
+use crate::value::format_value;
 
 mod config;
 mod currency;
@@ -44,10 +45,19 @@ fn main() -> Result<(), CalcError> {
                     line_buffer.push_str(line.as_str());
                     parser.extend(lexer.parse(line.as_str()));
 
-                    if let Some(node) = parser.parse() {
+                    if let Some((node, spec)) = parser.parse() {
                         let eval = node.eval();
                         match eval {
-                            Ok(res) => println!("{res}"),
+                            Ok(res) => {
+                                let opts = {
+                                    let guard = config::current();
+                                    match &spec {
+                                        Some(s) => config::apply_spec(&guard.format, s),
+                                        None => guard.format.clone(),
+                                    }
+                                };
+                                println!("{}", format_value(&res, &opts));
+                            }
                             Err(error) => println!("{error}"),
                         }
 
@@ -76,10 +86,19 @@ fn main() -> Result<(), CalcError> {
         let input = args[1..].join(" ");
         let mut parser = Parser::new();
         parser.extend(lexer.parse(input.as_str()));
-        if let Some(node) = parser.parse() {
+        if let Some((node, spec)) = parser.parse() {
             let eval = node.eval();
             match eval {
-                Ok(res) => println!("{res}"),
+                Ok(res) => {
+                    let opts = {
+                        let guard = config::current();
+                        match &spec {
+                            Some(s) => config::apply_spec(&guard.format, s),
+                            None => guard.format.clone(),
+                        }
+                    };
+                    println!("{}", format_value(&res, &opts));
+                }
                 Err(error) => println!("{error}"),
             }
         }
