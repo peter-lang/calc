@@ -57,6 +57,7 @@ fn main() -> Result<(), CalcError> {
                                     }
                                 };
                                 println!("{}", format_value(&res, &opts));
+                                parser.set_ans(res);
                             }
                             Err(error) => println!("{error}"),
                         }

@@ -39,12 +39,14 @@ position wins. The table is therefore ordered deliberately:
 - multi-character unit names before shorter ones — the table is grouped
   `// 3 char`, `// 2 char`, `// 1 char` (e.g. `cm3` before `cm`, `cm` before
   `m`),
-- **formatter keywords** (`fixed`, `float`, `sci`, `fin`/`financial`,
-  `rat`/`rational`) appear before any unit token. `fixed`, `float`,
+- **keywords** (`to`, `fixed`, `float`, `sci`, `fin`/`financial`,
+  `rat`/`rational`, `ans`) appear before any unit token. `fixed`, `float`,
   `fin`/`financial` start with `f` (which is `TempF`) and `sci` starts with
   `s` (which is `TimeSec`), so without dedicated keywords those names would
-  tokenize incorrectly (`fin` → `[TempF, LenInch]`). `rat`/`rational` have no
-  conflict but are also keywords for consistency.
+  tokenize incorrectly (`fin` → `[TempF, LenInch]`). All keyword patterns use
+  a `\b` word-boundary anchor so a keyword is only matched when it is not a
+  prefix of a longer identifier (e.g. `"answer"` is not split into
+  `KwAns + Ident("wer")`).
 - the generic identifier rule `[A-Za-z_]...` and the catch-all `\S+`
   (`Token::INVALID`) come last.
 

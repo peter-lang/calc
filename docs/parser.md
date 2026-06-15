@@ -59,6 +59,7 @@ exponent   := atom "^" exponent        (right-associative; "**" also accepted)
             | atom
 
 atom       := "(" expression ")"
+            | "ans"                    (last result, initially 0)
             | num_unit                 (number with unit, possibly compound)
             | number                   (bare number, unitless)
             | unit                     (bare unit ⇒ quantity 1)
@@ -92,6 +93,11 @@ all it can.
   the target unit (as a quantity-1 value) on the right.
 - **Bare unit as `atom`.** A unit by itself parses as the value `1 <unit>`, so
   `EUR to USD` means "1 EUR to USD".
+- **`ans`.** `Parser` carries `ans: Value`, initialized to `0` and updated by
+  `set_ans` (called from `main.rs`) after each successful eval. When `atom`
+  sees `KwAns` it immediately substitutes `Node::Value(self.ans.clone())`, so
+  `ans` is resolved at parse time and `eval()` sees only a plain value. Eval
+  errors do not update `ans`.
 - **`expect_number` / `expect_unit`.** Leaf matchers that read a single literal
   or unit token. `expect_unit` is the big `Token → Unit` mapping, including the
   currency case, which validates the code against the sorted `CURRENCIES` array

@@ -6,6 +6,7 @@ use crate::number::Number;
 use crate::parser::token::{Token, CURRENCIES};
 use crate::unit;
 use crate::unit::Unit;
+use crate::value::Value;
 use crate::value_op::{BinaryOp, UnaryOp};
 
 #[derive(Clone)]
@@ -19,6 +20,7 @@ type MemoPos = (usize, &'static str);
 pub struct Parser {
     tokens: Vec<Token>,
     memos: HashMap<MemoPos, Match<Node>>,
+    ans: Value,
 }
 
 impl Parser {
@@ -26,7 +28,12 @@ impl Parser {
         Parser {
             tokens: vec![],
             memos: HashMap::new(),
+            ans: Value::from(0i64),
         }
+    }
+
+    pub fn set_ans(&mut self, val: Value) {
+        self.ans = val;
     }
 
     pub fn is_empty(&self) -> bool {
@@ -198,6 +205,9 @@ impl Parser {
                     return Match::Ok(val, pos);
                 }
             }
+        }
+        if let Some(next) = self.expect(pos, Token::KwAns) {
+            return Match::Ok(Node::Value(self.ans.clone()), next);
         }
         if let Match::Ok(node, pos) = self.num_unit(pos) {
             return Match::Ok(node, pos);

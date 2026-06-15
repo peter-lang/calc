@@ -469,6 +469,28 @@ fn format_operator_unknown_produces_no_output() {
     assert_eq!(eval("1/3 | bogus"), "");
 }
 
+#[test]
+fn ans_keyword() {
+    // one-shot: ans initializes to 0
+    check(&[("ans", "0"), ("ans + 1", "1"), ("ans * 5", "0")]);
+
+    // REPL: ans updates after each successful eval
+    let out = eval_repl("5\nans + 3\nans * 2\n");
+    assert_eq!(out, "5\n8\n16");
+
+    // REPL: ans carries units
+    let out = eval_repl("5 m\nans to cm\n");
+    assert_eq!(out, "5 m\n500 cm");
+
+    // REPL: eval errors do not update ans
+    let out = eval_repl("7\n1/0\nans\n");
+    assert_eq!(out, "7\nDivision by zero\n7");
+
+    // REPL: ans | fmt reformats the previous result (primary use case)
+    let out = eval_repl("1/2 + 1/3\nans | rat\n");
+    assert_eq!(out, "0.8333\u{2026}\n5/6");
+}
+
 /// Currency conversion hits the live MNB feed (or a same-day cache) and is not
 /// deterministic, so it is excluded from the default run. Execute explicitly
 /// with `cargo test -- --ignored` when a network check is wanted.
