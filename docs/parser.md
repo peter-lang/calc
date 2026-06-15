@@ -48,6 +48,7 @@ expression := expression "+" term
 term       := term "*" exponent
             | term "/" exponent
             | term "to" unit           (unit conversion)
+            | term unit                (implicit ×1·unit, e.g. (2*3) eur)
             | exponent
 
 exponent   := atom "^" exponent        (right-associative; "**" also accepted)
@@ -58,9 +59,7 @@ atom       := "(" expression ")"
             | number                   (bare number, unitless)
             | unit                     (bare unit ⇒ quantity 1)
 
-num_unit   := num_unit single_num_unit (compound, e.g. 5 m 10 cm)
-            | single_num_unit
-
+num_unit   := single_num_unit+         (same-group quantities summed)
 single_num_unit := number unit
 ```
 
@@ -69,12 +68,18 @@ handled at the `expression` level.
 
 ## Notable rules
 
-- **`num_unit` (compound quantities).** Allows chains like `5 m 10 cm` or
-  `1 h 30 min`. Each appended `single_num_unit` must share a `UnitType` with the
-  accumulated left side (checked via `unit::common_type`); the pieces are folded
-  together with `value_op::add`, so `5 m 10 cm` becomes `5 m + 10 cm` and
-  evaluates to `5.1 m`.
-- **`to` conversion.** `term "to" unit` builds a `value_op::conversion` node with
+- **`num_unit` (compound quantities).** The "feet-and-inches" notation. Adjacent
+  quantities are summed when their units share a **compound group**
+  (`unit::compound_group`): `{m, cm}`, `{ft, in}`, `{h, min, s}`. The pieces fold
+  left with `value_op::add`, so `5 m 10 cm` → `5.1 m` and `1 h 30 min 15 s`
+  chains N-way. Units outside any group (`5 kg 10 g`) don't compound and fail to
+  parse. User-defined groups are a planned config feature.
+- **Bare-unit multiplication.** Juxtaposing a value with a bare unit is implicit
+  multiplication by `1·unit` (`term := term unit`, multiplication precedence), so
+  `(2*3) eur` → `6 eur` and `1/2 eur` → `0.5 eur`. Two united values therefore
+  multiply and error if incompatible; raising a united value to a power is also
+  rejected — see [units.md](units.md).
+- **`to` conversion.** `term "to" unit` builds a `BinaryOp::Conversion` node with
   the target unit (as a quantity-1 value) on the right.
 - **Bare unit as `atom`.** A unit by itself parses as the value `1 <unit>`, so
   `EUR to USD` means "1 EUR to USD".

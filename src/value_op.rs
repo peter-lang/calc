@@ -68,12 +68,17 @@ pub fn conversion(lhs: Value, rhs: Value) -> Result<Value, CalcError> {
 }
 
 pub fn pow(lhs: Value, rhs: Value) -> Result<Value, CalcError> {
-    if let Some(_) = rhs.unit {
+    if rhs.unit.is_some() {
         return Err(CalcError::ExpByUnit);
+    }
+    // Raising a united value to a power would produce a derived unit (e.g. m²),
+    // which we don't support yet — reuse OperateWithUnits until unit algebra lands.
+    if lhs.unit.is_some() {
+        return Err(CalcError::OperateWithUnits);
     }
     Ok(Value {
         num: number_op::pow(lhs.num, rhs.num)?,
-        unit: lhs.unit,
+        unit: None,
     })
 }
 

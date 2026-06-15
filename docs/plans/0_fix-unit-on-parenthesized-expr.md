@@ -22,32 +22,35 @@ and the leftover `eur` makes `parse()` return `None`.
 
 ## Decisions
 
-### 1. Attach a unit to a parenthesized value
-`( expr ) unit` → `expr × 1·unit` (`value_op::mul` turns `6 × 1 eur` into
-`6 eur`). Scalar inner value only; if the inner value already has a unit it falls
-to rule 3 (and errors, as desired).
+### 1. Multiply by a bare unit (general)
+A value followed by a **bare unit** is multiplication by `1·unit`, at
+multiplication precedence (a `term := term unit` rule) — not a special case for
+parentheses. Covers the reported `(2*3) eur` → `6 eur`, and also `(1+2) m`,
+`1/2 eur`, etc. `value_op::mul` turns `6 × 1 eur` into `6 eur`. (`5 m` literals are
+still parsed by `num_unit`; both routes give the same result.)
 
-### 2. Compound notation = fixed length pairs (for now)
-`N₁ u₁ N₂ u₂` summing adjacent quantities is valid **only** for these length
-pairs, and binds as a tight **atom** (so `5 m 10 cm to cm` = `(5 m + 10 cm) to
-cm`):
+### 2. Compound notation = fixed groups (for now)
+Adjacent quantities are summed when their units share a **compound group**,
+binding as a tight **atom** (so `5 m 10 cm to cm` = `(5 m + 10 cm) to cm`), and it
+chains N-way within a group:
 
-- **m + cm**
-- **ft + in** (`5' 11"`)
+- **{m, cm}**
+- **{ft, in}** (`5' 11"`)
+- **{h, min, s}** (`1 h 30 min 15 s`)
 
-That's the "feet-and-inches" / "metres-and-centimetres" notation. Everything else —
-other units (`km`, `mm`, `yd`, `mi`), mixed systems (`5 m 10 in`), non-length
-(`5 kg 10 g`) — **no longer** compounds. Suggested implementation: a dedicated
-compound rule keyed on these specific pairs, replacing the generic "same
-`UnitType`" chain in `num_unit`.
+The "feet-and-inches" / "hours-minutes-seconds" notation. Everything else — other
+units (`km`, `mm`, `yd`, `mi`), mixed groups (`5 m 10 in`), non-grouped
+(`5 kg 10 g`) — does **not** compound. Implementation: `unit::compound_group`
+plus a greedy same-group chain in `num_unit` (replacing the generic same-`UnitType`
+chain).
 
 > **Future (optional, config-driven):** let users define their own compound groups
 > — see [plan 9](9_configurable-compound-groups.md).
 
-### 3. Everything else = implicit multiplication
-A value followed by a unit multiplies by `1·unit`. Two **united** values therefore
-multiply and error if incompatible — e.g. `(2 m) eur` → `Cannot operate with
-units`. Correct until unit algebra exists.
+### 3. Incompatible juxtapositions error
+Because rule 1 is multiplication, two **united** values written together multiply
+and error if incompatible — e.g. `(2 m) eur` → `Cannot operate with units`.
+Correct until unit algebra exists.
 
 ### 4. No unit exponentiation yet
 Raising a value that has a unit to a power **errors** (e.g. `(2 m)^2`, `2 m ^ 2`).
@@ -89,7 +92,7 @@ error variant). **This changes today's behaviour** (`(2 m)^2` currently → `4 m
 ## Steps
 
 1. Confirm current outputs for the cases above.
-2. `parser.rs`: parenthesized-value + unit attaches via `Mul`.
+2. `parser.rs`: `term unit` rule — bare-unit multiplication via `Mul`.
 3. Restrict compound to the fixed pairs (`m+cm`, `ft+in`): dedicated rule; drop
    generic same-`UnitType` chaining.
 4. `value_op::pow`: error (`OperateWithUnits`) when the base has a unit.

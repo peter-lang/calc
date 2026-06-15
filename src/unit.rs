@@ -216,6 +216,26 @@ fn convert_temp(val: Number, from: &Unit, to: &Unit) -> Result<Number, CalcError
     }
 }
 
+// Units that may be written adjacently and summed (the "feet-and-inches" /
+// "hours-minutes-seconds" notation). Adjacent quantities compound when they share
+// a group. Restricted to these fixed groups for now; user-defined groups are a
+// future config feature.
+#[derive(Clone, Copy, PartialEq)]
+pub enum CompoundGroup {
+    MetricLength,
+    ImperialLength,
+    Time,
+}
+
+pub fn compound_group(u: &Unit) -> Option<CompoundGroup> {
+    match u {
+        Unit::LenM | Unit::LenCm => Some(CompoundGroup::MetricLength),
+        Unit::LenFeet | Unit::LenInch => Some(CompoundGroup::ImperialLength),
+        Unit::TimeHour | Unit::TimeMin | Unit::TimeSec => Some(CompoundGroup::Time),
+        _ => None,
+    }
+}
+
 pub fn common_type(a: &Unit, b: &Unit) -> Option<UnitType> {
     let unit_type = get_unit_type(a);
     if unit_type == get_unit_type(b) {

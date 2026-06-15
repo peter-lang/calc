@@ -6,7 +6,6 @@ use crate::node::Node;
 use crate::number::Number;
 use crate::parser::token::{CURRENCIES, Token};
 use crate::unit::Unit;
-use crate::value::Value;
 
 #[derive(Clone)]
 enum Match<T> {
@@ -111,35 +110,31 @@ impl Parser {
     }
 
     fn num_unit(&mut self, pos: usize) -> Match<Node> {
-        self.memoize_left_rec(pos, "num_unit", Self::num_unit_inner)
+        self.memoize(pos, "num_unit", Self::num_unit_inner)
     }
 
     fn num_unit_inner(&mut self, pos: usize) -> Match<Node> {
-        if let Match::Ok(
-            Node::Value(Value {
-                            num: lhs_num,
-                            unit: Some(lhs_unit),
-                        }),
-            pos,
-        ) = self.num_unit(pos)
-        {
-            if let Match::Ok((rhs_num, rhs_unit), pos) = self.expect_single_num_unit(pos) {
-                if let Some(_) = unit::common_type(&lhs_unit, &rhs_unit) {
-                    return Match::Ok(
-                        Node::BinaryExpr {
-                            op: BinaryOp::Add,
-                            lhs: Box::new(Node::value(lhs_num, Some(lhs_unit))),
-                            rhs: Box::new(Node::value(rhs_num, Some(rhs_unit))),
-                        },
-                        pos,
-                    );
+        let Match::Ok((num, unit), mut pos) = self.expect_single_num_unit(pos) else {
+            return Match::Err;
+        };
+        // Adjacent quantities in the same compound group are summed, e.g.
+        // `5 m 10 cm`, `5' 11"`, `1 h 30 min 15 s`.
+        let group = unit::compound_group(&unit);
+        let mut node = Node::value(num, Some(unit));
+        if let Some(group) = group {
+            while let Match::Ok((rhs_num, rhs_unit), next) = self.expect_single_num_unit(pos) {
+                if unit::compound_group(&rhs_unit) != Some(group) {
+                    break;
                 }
+                node = Node::BinaryExpr {
+                    op: BinaryOp::Add,
+                    lhs: Box::new(node),
+                    rhs: Box::new(Node::value(rhs_num, Some(rhs_unit))),
+                };
+                pos = next;
             }
         }
-        if let Match::Ok((num, unit), pos) = self.expect_single_num_unit(pos) {
-            return Match::Ok(Node::value(num, Some(unit)), pos);
-        }
-        Match::Err
+        Match::Ok(node, pos)
     }
 
     fn expect_single_num_unit(&mut self, pos: usize) -> Match<(Number, Unit)> {
@@ -236,6 +231,18 @@ impl Parser {
                         pos,
                     );
                 }
+            } else if let Match::Ok(unit, pos) = self.expect_unit(pos) {
+                // Juxtaposition with a bare unit is multiplication by `1·unit`,
+                // so `(2*3) eur` → `6 eur`. (`5 m` literals are handled by
+                // `num_unit`; both yield the same result.)
+                return Match::Ok(
+                    Node::BinaryExpr {
+                        op: BinaryOp::Mul,
+                        lhs: Box::new(lhs),
+                        rhs: Box::new(Node::value(1.into(), Some(unit))),
+                    },
+                    pos,
+                );
             }
         }
         self.exponent(pos)

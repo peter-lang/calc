@@ -130,7 +130,6 @@ fn mass_volume_time_conversions() {
         ("1 gallon to l", "3.785… l"),
         ("1 lb to kg", "0.453592… kg"),
         ("2 kg to g", "2k g"),
-        ("1 h 30 min to min", "90 min"),
         ("60 min to h", "1 h"),
     ]);
 }
@@ -142,7 +141,19 @@ fn temperature_conversions() {
 
 #[test]
 fn compound_quantities() {
-    check(&[("5 m 10 cm to cm", "510 cm")]);
+    // adjacent quantities are summed within a compound group: m+cm, ft+in, h/min/s
+    check(&[
+        ("5 m 10 cm to cm", "510 cm"),
+        ("5 ft 11 in to cm", "180.34 cm"),
+        ("1 h 30 min to min", "90 min"),
+        ("1 h 30 min 15 s to s", "5415 s"),
+    ]);
+}
+
+#[test]
+fn unit_attaches_to_parenthesized_value() {
+    // a unit right after `( … )` attaches to the value (implicit multiplication)
+    check(&[("(2*3) m to cm", "600 cm"), ("(2+1) m", "3 m")]);
 }
 
 #[test]
@@ -153,8 +164,6 @@ fn units_with_arithmetic() {
         ("m", "1 m"),
         ("3 m * 2", "6 m"),
         ("6 m / 2", "3 m"),
-        // pow keeps the base's unit
-        ("(2 m)^2", "4 m"),
     ]);
 }
 
@@ -168,6 +177,8 @@ fn error_messages() {
         ("3 m * 2 m", "Cannot operate with units"),
         ("100 km / 2 h", "Cannot operate with units"),
         ("2 ^ 3 m", "Exponent cannot have a unit"),
+        // raising a united value to a power would be a derived unit — not yet
+        ("(2 m)^2", "Cannot operate with units"),
     ]);
 }
 
@@ -176,6 +187,8 @@ fn unparseable_input_produces_no_output() {
     // `%` is tokenized but has no grammar rule, so the expression fails to parse
     // and nothing is printed. Documents current behaviour.
     assert_eq!(eval("10 % 3"), "");
+    // mass isn't a compound group, so `5 kg 10 g` doesn't parse
+    assert_eq!(eval("5 kg 10 g"), "");
 }
 
 #[test]

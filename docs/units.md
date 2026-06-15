@@ -83,8 +83,11 @@ current rule is intentionally simple:
 - **both** sides have units → `CalcError::OperateWithUnits`.
 
 So the calculator does **not** synthesize compound/derived units: `100 km / 2 h`
-is an error, not `50 km/h`. This is a known limitation; deriving units would
-require a richer `Unit` representation (e.g. dimension vectors).
+is an error, not `50 km/h`. For the same reason, **raising a value that has a unit
+to a power is rejected** (`value_op::pow` returns `OperateWithUnits`): `(2 m)^2`
+would be `4 m²`, a derived unit we don't model yet. This is a known limitation;
+deriving units would require a richer `Unit` representation (e.g. dimension
+vectors).
 
 Addition/subtraction (`value_op::add`/`sub`) instead **convert the right operand
 into the left's unit** when both are present and same-type, erroring with
