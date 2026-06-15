@@ -65,11 +65,14 @@ fn check(cases: &[(&str, &str)]) {
 #[test]
 fn integer_arithmetic() {
     check(&[
+        ("0", "0"),
         ("2 + 2", "4"),
         ("10 - 3", "7"),
         ("6 * 7", "42"),
         ("-5 + 3", "-2"),
         ("-(2+3)", "-5"),
+        // large negatives: no k/m suffix (those are opt-in, plan 4)
+        ("-1000000", "-1000000"),
     ]);
 }
 
@@ -93,27 +96,36 @@ fn rational_arithmetic_stays_exact() {
         ("1/2 + 1/3", "0.8333…"),
         ("1/3", "0.3333…"),
         ("10 / 3", "3.3333…"),
+        // negative rational
+        ("-1/3", "-0.3333…"),
+        // exact results demote back to Int
+        ("6 / 3", "2"),
+        ("1/3 * 3", "1"),
     ]);
 }
 
 #[test]
 fn float_results() {
-    check(&[("2^0.5", "1.4142…"), ("0.5", "0.5")]);
+    check(&[
+        ("2^0.5", "1.4142…"),
+        ("-2^0.5", "-1.4142…"),
+        // whole-valued floats render as plain integers
+        ("4^0.5", "2"),
+        ("0.0", "0"),
+        // IEEE 754 imprecision is visible via the … marker
+        ("0.1 + 0.2", "0.3000…"),
+    ]);
 }
 
 #[test]
-fn number_formatting_plain_integers_and_scientific() {
+fn integer_suffix_parsing() {
+    // k and m are lexer suffixes for ×1000 / ×1000000; result is a plain integer
     check(&[
-        // integers print in full, no k/m suffixes (those are the fin formatter, plan 4)
-        ("3000", "3000"),
-        ("1500", "1500"),
+        ("3k", "3000"),
         ("3k * 2", "6000"),
         ("2m", "2000000"),
         ("1000000", "1000000"),
         ("1234567", "1234567"),
-        // whole-valued floats also print as plain integers
-        ("1e9", "1000000000"),
-        ("1e12", "1000000000000"),
     ]);
 }
 
@@ -123,6 +135,8 @@ fn length_conversions() {
         ("5 m to cm", "500 cm"),
         ("1 km to m", "1000 m"),
         ("100 cm to m", "1 m"),
+        // bidirectional: small exact result
+        ("1 m to km", "0.001 km"),
         ("1 inch to cm", "2.54 cm"),
         ("1 ft to inch", "12 \""),
         ("1 mi to km", "1.6093… km"),
@@ -136,12 +150,21 @@ fn mass_volume_time_conversions() {
         ("1 lb to kg", "0.4536… kg"),
         ("2 kg to g", "2000 g"),
         ("60 min to h", "1 h"),
+        ("1 h to s", "3600 s"),
     ]);
 }
 
 #[test]
 fn temperature_conversions() {
-    check(&[("95 f to c", "35 C"), ("0 c to f", "32 F")]);
+    check(&[
+        ("95 f to c", "35 C"),
+        ("0 c to f", "32 F"),
+        ("100 c to f", "212 F"),
+        // -40 is the unique crossover where °C == °F;
+        // parenthesise so the unit attaches before conversion (not after negation)
+        ("(-40) c to f", "-40 F"),
+        ("(-40) f to c", "-40 C"),
+    ]);
 }
 
 #[test]
@@ -169,6 +192,7 @@ fn units_with_arithmetic() {
         ("m", "1 m"),
         ("3 m * 2", "6 m"),
         ("6 m / 2", "3 m"),
+        ("5 m - 3 m", "2 m"),
     ]);
 }
 
@@ -194,6 +218,8 @@ fn unparseable_input_produces_no_output() {
     assert_eq!(eval("10 % 3"), "");
     // mass isn't a compound group, so `5 kg 10 g` doesn't parse
     assert_eq!(eval("5 kg 10 g"), "");
+    // incomplete expression (trailing operator)
+    assert_eq!(eval("1 m +"), "");
 }
 
 #[test]
@@ -238,9 +264,11 @@ fn config_valid_calc_config_env() {
 
 #[test]
 fn config_missing_calc_config_path_uses_defaults() {
+    let dir = tempfile::tempdir().expect("create temp dir");
+    let missing = dir.path().join("nonexistent.toml"); // deliberately not created
     let (ok, out, _) = eval_with_env(
         "2+2",
-        &[("CALC_CONFIG", "/tmp/calc-this-file-does-not-exist-xyzzy.toml")],
+        &[("CALC_CONFIG", missing.to_str().unwrap())],
         &[],
     );
     assert!(ok, "missing CALC_CONFIG path should use defaults, not error");
@@ -275,6 +303,11 @@ fn config_first_run_bootstrap_creates_file() {
     // The bootstrap should have created conf.toml under the XDG config dir.
     let config_path = home.path().join(".config").join("calc").join("conf.toml");
     assert!(config_path.exists(), "bootstrap should have created {config_path:?}");
+    let content = std::fs::read_to_string(&config_path).expect("read bootstrapped config");
+    assert!(
+        content.contains("calc configuration"),
+        "bootstrapped file should contain the documented template header"
+    );
 }
 
 /// Run with a custom [format] section in the config and return trimmed stdout.
@@ -331,6 +364,28 @@ fn format_int_scientific() {
         eval_with_format_config("999", "int_scientific = true\nint_sci_upper = 1e12"),
         "999"
     );
+}
+
+#[test]
+fn repl_error_recovery() {
+    // An eval error is printed but the REPL continues accepting input.
+    let out = eval_repl("1/0\n2 + 2\n");
+    assert_eq!(out, "Division by zero\n4");
+}
+
+#[test]
+fn format_sci_precision() {
+    // sci_precision controls mantissa decimal places in scientific mode
+    assert_eq!(
+        eval_with_format_config("2250000.75", "sci_precision = 2"),
+        "2.25…e6"
+    );
+    assert_eq!(
+        eval_with_format_config("2250000.75", "sci_precision = 6"),
+        "2.250001…e6"
+    );
+    // default (sci_precision = 4) for reference
+    assert_eq!(eval_with_format_config("2250000.75", ""), "2.2500…e6");
 }
 
 /// Currency conversion hits the live MNB feed (or a same-day cache) and is not
