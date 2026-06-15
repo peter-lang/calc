@@ -109,9 +109,9 @@ local style where the two conflict.
   its type system. Avoid `unsafe`, and avoid panics on reachable paths
   (`unwrap`/`expect`/`panic!`/indexing that can go out of bounds / silent
   `as` truncation). Return `Result<_, CalcError>` instead. Existing spots that
-  violate this (e.g. `unwrap`s in `lexer.rs`/`files.rs`, `panic!` in
-  `rational.rs::new` and `number.rs::to_rational`) are tech debt — migrate them
-  when you touch that code rather than copying the pattern.
+  violate this (e.g. `unwrap`s in `lexer.rs`, `panic!` in `rational.rs::new` and
+  `number.rs::to_rational`) are tech debt — migrate them when you touch that code
+  rather than copying the pattern.
 - **Code should be self-documenting; keep comments sparse.** Prefer clear names
   and structure over explanatory comments. Document higher-level behaviour in
   [`docs/`](docs/README.md), not in inline prose. When you add or change
@@ -136,6 +136,28 @@ local style where the two conflict.
   are examples of this justified-unit-test case.
 - Before adding a unit test, ask whether the invariant could instead be a
   compile-time guarantee (see principles above) or covered by a CLI-level test.
+
+## Planning (`docs/plans/`)
+
+Any complex or multi-step task gets a written plan in [`docs/plans/`](docs/plans/)
+before/while doing the work — this is also where future implementation and design
+plans live, so they aren't lost.
+
+- **Keep the plan updated as you go.** Tick off steps and record decisions /
+  surprises as the task progresses, so the file always reflects current state and
+  is a usable resume point.
+- **Prioritize with a numeric prefix:** `1_`, `2_`, `3_`, … The number is the
+  priority/order; lower runs first.
+- **Need an immediate plan to do *right now*** without renumbering the queue? Use
+  a `0_` or `__` prefix so it sorts ahead of the numbered backlog and you don't
+  have to reprioritize everything else.
+- **Delete a plan once it's finished** — completed plans don't linger; the git
+  history keeps the record. (So don't link to a specific plan file from long-lived
+  docs; it may be gone.)
+
+A plan typically has: goal, a verification gate (how you'll know each step is
+done), ordered steps with risk/notes, and a progress checklist used as the resume
+point.
 
 ## When in doubt, read the design docs
 
