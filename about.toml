@@ -1,0 +1,20 @@
+# Licenses accepted as permissive and compatible with distributing calc under
+# Apache-2.0. All entries are non-copyleft; see the dependency license audit.
+accepted = [
+    "Apache-2.0",
+    "MIT",
+    "BSD-3-Clause",
+    "ISC",
+    "BSL-1.0",
+    "Zlib",
+    "0BSD",
+    "Unicode-DFS-2016",
+    "Unicode-3.0",
+    "CDLA-Permissive-2.0",
+    "Unlicense",
+    # ring (via the rustls TLS stack) declares these non-standard but permissive
+    # OpenSSL/SSLeay-style identifiers.
+    "OpenSSL",
+    "OpenSSL-standalone",
+    "SSLeay-standalone",
+]
