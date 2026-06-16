@@ -41,7 +41,7 @@ possible and only fall back to `Float` when an operation forces it.
 
 | Topic | File | What it covers |
 |-------|------|----------------|
-| Architecture & data flow | [architecture.md](architecture.md) | Module layout, the pipeline, the REPL loop, error handling |
+| Architecture & data flow | [architecture.md](architecture.md) | Module layout, the pipeline, the REPL loop, `/config` meta-commands, error handling |
 | Lexer | [lexer.md](lexer.md) | Tokenizing, the regex table, number suffixes, adding tokens |
 | Parser & grammar | [parser.md](parser.md) | The packrat/left-recursive parser, operator precedence, the grammar |
 | Numbers | [numbers.md](numbers.md) | `Number`, `Rational`, type promotion, output formatting |

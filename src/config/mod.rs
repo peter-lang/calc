@@ -1,17 +1,21 @@
 use std::collections::HashMap;
 use std::env;
 use std::fs;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::sync::{OnceLock, RwLock, RwLockReadGuard};
 
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 
 use crate::error::CalcError;
 use crate::files;
 
+mod registry;
+
+pub use registry::REGISTRY;
+
 static CONFIG: OnceLock<RwLock<Config>> = OnceLock::new();
 
-#[derive(Debug, Default, PartialEq, Deserialize)]
+#[derive(Debug, Default, PartialEq, Deserialize, Serialize)]
 pub struct Config {
     #[serde(default)]
     pub format: FormatOptions,
@@ -19,7 +23,7 @@ pub struct Config {
     pub currency: CurrencyConfig,
 }
 
-#[derive(Debug, Default, PartialEq, Deserialize)]
+#[derive(Debug, Default, PartialEq, Deserialize, Serialize)]
 #[serde(rename_all = "lowercase")]
 pub enum CurrencyProvider {
     #[default]
@@ -27,7 +31,7 @@ pub enum CurrencyProvider {
     Static,
 }
 
-#[derive(Debug, Default, PartialEq, Deserialize)]
+#[derive(Debug, Default, PartialEq, Deserialize, Serialize)]
 #[serde(default)]
 pub struct CurrencyConfig {
     pub provider: CurrencyProvider,
@@ -35,7 +39,7 @@ pub struct CurrencyConfig {
     pub static_rates: HashMap<String, f64>,
 }
 
-#[derive(Debug, Clone, PartialEq, Default, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Default, Deserialize, Serialize)]
 #[serde(rename_all = "lowercase")]
 pub enum NumberRepr {
     Fixed,
@@ -46,7 +50,7 @@ pub enum NumberRepr {
     Financial,
 }
 
-#[derive(Debug, Clone, PartialEq, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Deserialize, Serialize)]
 #[serde(default)]
 pub struct FormatOptions {
     pub repr: NumberRepr,
@@ -56,7 +60,7 @@ pub struct FormatOptions {
     pub int: IntConfig,
 }
 
-#[derive(Debug, Clone, PartialEq, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Deserialize, Serialize)]
 #[serde(default)]
 pub struct FloatConfig {
     pub precision: u8,
@@ -65,23 +69,71 @@ pub struct FloatConfig {
     pub sci_upgrade_upper: f64,
 }
 
-#[derive(Debug, Clone, PartialEq, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Deserialize, Serialize)]
 #[serde(default)]
 pub struct SciConfig {
     pub precision: u8,
 }
 
-#[derive(Debug, Clone, PartialEq, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Deserialize, Serialize)]
 #[serde(default)]
 pub struct FinConfig {
     pub precision: u8,
 }
 
-#[derive(Debug, Clone, PartialEq, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Deserialize, Serialize)]
 #[serde(default)]
 pub struct IntConfig {
     pub sci_upgrade: bool,
     pub sci_upgrade_upper: f64,
+}
+
+impl std::fmt::Display for NumberRepr {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(match self {
+            Self::Fixed => "fixed",
+            Self::Float => "float",
+            Self::Sci => "sci",
+            Self::Rational => "rational",
+            Self::Financial => "financial",
+        })
+    }
+}
+
+impl std::fmt::Display for CurrencyProvider {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(match self {
+            Self::Mnb => "mnb",
+            Self::Static => "static",
+        })
+    }
+}
+
+pub fn set_key(key: &str, value: &str) -> Result<String, String> {
+    let entry = REGISTRY.iter().find(|e| e.key == key).ok_or_else(|| {
+        let keys: Vec<_> = REGISTRY.iter().map(|e| e.key).collect();
+        format!("unknown key {key:?}; valid keys: {}", keys.join(", "))
+    })?;
+    let mut cfg = CONFIG
+        .get()
+        .expect("config::init() must be called before config::set_key()")
+        .write()
+        .expect("config RwLock poisoned");
+    (entry.set)(&mut cfg, value).map_err(|e| format!("{key}: {e}"))?;
+    Ok((entry.get)(&cfg))
+}
+
+pub fn persist() -> Result<(), CalcError> {
+    let path = config_path()?;
+    let text = {
+        let cfg = current();
+        toml::to_string(&*cfg).map_err(|e| CalcError::ConfigError(e.to_string()))?
+    };
+    if let Some(parent) = path.parent() {
+        fs::create_dir_all(parent)?;
+    }
+    fs::write(path, text)?;
+    Ok(())
 }
 
 pub enum FormatSpec {
@@ -179,6 +231,13 @@ pub fn current() -> RwLockReadGuard<'static, Config> {
         .expect("config::init() must be called before config::current()")
         .read()
         .expect("config RwLock poisoned")
+}
+
+fn config_path() -> Result<PathBuf, CalcError> {
+    match env::var_os("CALC_CONFIG") {
+        Some(p) => Ok(PathBuf::from(p)),
+        None => files::config(),
+    }
 }
 
 fn load() -> Result<Config, CalcError> {

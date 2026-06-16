@@ -43,7 +43,9 @@ Operators in the AST are **enum variants** (`BinaryOp`/`UnaryOp` in `value_op`);
 
 | File | Role | Docs |
 |------|------|------|
-| `src/main.rs` | REPL + one-shot entry point | [architecture](docs/architecture.md) |
+| `src/main.rs` | entry point: `config::init` + arg dispatch | [architecture](docs/architecture.md) |
+| `src/repl.rs` | REPL loop, one-shot eval, `/config` meta-commands, TAB completion | [architecture](docs/architecture.md) |
+| `src/config/mod.rs` / `config/registry.rs` | config data + load/persist; settable-key registry | [architecture](docs/architecture.md) |
 | `src/parser/lexer.rs` | string → tokens (one combined regex) | [lexer](docs/lexer.md) |
 | `src/parser/token.rs` | `Token` enum, currency list/regex | [lexer](docs/lexer.md) |
 | `src/parser/parser.rs` | tokens → AST; **grammar** | [parser](docs/parser.md) |
@@ -52,7 +54,7 @@ Operators in the AST are **enum variants** (`BinaryOp`/`UnaryOp` in `value_op`);
 | `src/number.rs` / `number_op.rs` | `Number`, arithmetic, **output formatting** | [numbers](docs/numbers.md) |
 | `src/rational.rs` | exact `Rational` | [numbers](docs/numbers.md) |
 | `src/unit.rs` | units, conversion factors, combining rules | [units](docs/units.md) |
-| `src/currency.rs` | MNB fetch, caching, HUF-base conversion | [currency](docs/currency.md) |
+| `src/currency/mod.rs` | MNB fetch, caching, HUF-base conversion | [currency](docs/currency.md) |
 | `src/error.rs` | `CalcError` (`thiserror`) | — |
 | `src/files.rs` | cache-dir paths (history, rates) | [currency](docs/currency.md) |
 | `src/debug.rs` | `Debug` for `Number`/`Node` (AST dump) | [evaluation](docs/evaluation.md) |

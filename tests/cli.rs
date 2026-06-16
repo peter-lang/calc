@@ -7,7 +7,9 @@
 //! The currency path is excluded because it depends on the network / a live
 //! MNB feed; see the ignored `currency_smoke` test at the bottom.
 
+use std::fs;
 use std::io::Write;
+use std::path::Path;
 use std::process::{Command, Stdio};
 
 /// Run the built binary in one-shot mode with a single expression argument and
@@ -53,6 +55,31 @@ fn eval_repl(input: &str) -> String {
         .expect("failed to write stdin");
     let output = child.wait_with_output().expect("failed to wait for REPL");
     // home dropped here — temp dir cleaned up
+    String::from_utf8(output.stdout)
+        .expect("stdout was not utf-8")
+        .trim_end()
+        .to_string()
+}
+
+/// Like `eval_repl` but with an explicit CALC_CONFIG path (for --global tests).
+fn eval_repl_cfg(input: &str, config_path: &Path) -> String {
+    let home = tempfile::tempdir().expect("create temp home dir");
+    let mut child = Command::new(env!("CARGO_BIN_EXE_calc"))
+        .env("HOME", home.path())
+        .env_remove("XDG_CACHE_HOME")
+        .env_remove("XDG_CONFIG_HOME")
+        .env("CALC_CONFIG", config_path)
+        .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        .spawn()
+        .expect("failed to spawn calc REPL");
+    child
+        .stdin
+        .take()
+        .expect("no stdin")
+        .write_all(input.as_bytes())
+        .expect("failed to write stdin");
+    let output = child.wait_with_output().expect("failed to wait for REPL");
     String::from_utf8(output.stdout)
         .expect("stdout was not utf-8")
         .trim_end()
@@ -498,10 +525,146 @@ fn currency_static_provider() {
     assert_eq!(eval_with_format_config("100 EUR to USD", CONFIG), "108 USD");
     assert_eq!(eval_with_format_config("1 USD to HUF", CONFIG), "360 HUF");
     // inverse not configured → conversion error (no auto-fill)
-    assert_eq!(eval_with_format_config("100 USD to EUR", CONFIG), "Conversion error");
+    assert_eq!(
+        eval_with_format_config("100 USD to EUR", CONFIG),
+        "Conversion error"
+    );
 }
 
 /// Currency conversion hits the live MNB feed (or a same-day cache) and is not
+#[test]
+fn config_show_all_defaults() {
+    let out = eval_repl("/config\n");
+    assert!(
+        out.contains("format.repr = float"),
+        "missing format.repr: {out:?}"
+    );
+    assert!(
+        out.contains("format.float.precision = 4"),
+        "missing float.precision: {out:?}"
+    );
+    assert!(
+        out.contains("format.float.sci_upgrade = true"),
+        "missing sci_upgrade: {out:?}"
+    );
+    assert!(
+        out.contains("format.sci.precision = 4"),
+        "missing sci.precision: {out:?}"
+    );
+    assert!(
+        out.contains("format.fin.precision = 2"),
+        "missing fin.precision: {out:?}"
+    );
+    assert!(
+        out.contains("format.int.sci_upgrade = false"),
+        "missing int.sci_upgrade: {out:?}"
+    );
+    assert!(
+        out.contains("currency.provider = mnb"),
+        "missing currency.provider: {out:?}"
+    );
+}
+
+#[test]
+fn config_show_single_key() {
+    let out = eval_repl("/config format.float.precision\n");
+    assert_eq!(out.trim(), "format.float.precision = 4");
+}
+
+#[test]
+fn config_unknown_key_lists_valid() {
+    let out = eval_repl("/config format.nope\n");
+    assert!(out.contains("unknown key"), "expected error: {out:?}");
+    assert!(
+        out.contains("format.float.precision"),
+        "should list valid keys: {out:?}"
+    );
+}
+
+#[test]
+fn meta_command_does_not_break_subsequent_expression() {
+    let out = eval_repl("/config format.float.precision\n1 + 1\n");
+    assert!(
+        out.contains("format.float.precision = 4"),
+        "config output missing: {out:?}"
+    );
+    assert!(out.contains('2'), "expression result missing: {out:?}");
+}
+
+#[test]
+fn config_set_session_prints_new_value() {
+    let out = eval_repl("/config format.float.precision 6\n");
+    assert!(
+        out.contains("format.float.precision = 6"),
+        "set output: {out:?}"
+    );
+}
+
+#[test]
+fn config_set_session_affects_subsequent_expression() {
+    let out = eval_repl("/config format.float.precision 6\n1/3\n");
+    assert!(
+        out.contains("format.float.precision = 6"),
+        "set output missing: {out:?}"
+    );
+    assert!(out.contains("0.333333"), "expected 6 dp result: {out:?}");
+}
+
+#[test]
+fn config_set_invalid_value_prints_error() {
+    let out = eval_repl("/config format.float.precision notanumber\n");
+    assert!(
+        out.contains("expected integer"),
+        "expected parse error: {out:?}"
+    );
+}
+
+#[test]
+fn config_set_unknown_key_prints_error() {
+    let out = eval_repl("/config format.nonexistent 42\n");
+    assert!(
+        out.contains("unknown key"),
+        "expected unknown-key error: {out:?}"
+    );
+    assert!(
+        out.contains("format.float.precision"),
+        "should list valid keys: {out:?}"
+    );
+}
+
+#[test]
+fn config_set_repr_enum() {
+    let out = eval_repl("/config format.repr fixed\n");
+    assert_eq!(out.trim(), "format.repr = fixed");
+}
+
+#[test]
+fn config_global_persists_to_file() {
+    let dir = tempfile::tempdir().expect("create temp dir");
+    let path = dir.path().join("conf.toml");
+
+    // First session: set global
+    let out = eval_repl_cfg("/config global format.float.precision 6\n", &path);
+    assert!(
+        out.contains("format.float.precision = 6"),
+        "set output: {out:?}"
+    );
+
+    // File must exist and contain the new value
+    let content = fs::read_to_string(&path).expect("config file not written");
+    assert!(
+        content.contains("precision = 6"),
+        "config file content: {content:?}"
+    );
+
+    // Second session starting from the written file must read the persisted value
+    let out2 = eval_repl_cfg("/config format.float.precision\n", &path);
+    assert!(
+        out2.contains("format.float.precision = 6"),
+        "second session: {out2:?}"
+    );
+}
+
 /// deterministic, so it is excluded from the default run. Execute explicitly
 /// with `cargo test -- --ignored` when a network check is wanted.
 #[test]

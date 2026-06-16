@@ -26,7 +26,10 @@ raw string  ───▶  Lexer::parse  ───▶  [Token]  ───▶  Par
 
 | File | Responsibility |
 |------|----------------|
-| `src/main.rs` | Entry point: REPL loop and one-shot CLI mode |
+| `src/main.rs` | Entry point: `config::init` then dispatch to `repl::run` (REPL) or `repl::run_once` (one-shot) |
+| `src/repl.rs` | REPL loop, one-shot evaluation, `/config` meta-commands, and `rustyline` line-editing (completion + hints) |
+| `src/config/mod.rs` | Config data types, defaults, load/persist, the live `RwLock<Config>`, `FormatSpec`/`apply_spec` |
+| `src/config/registry.rs` | `REGISTRY` of settable keys: dotted path → getter/setter/completions; value parsers |
 | `src/parser/lexer.rs` | String → tokens (regex table) |
 | `src/parser/token.rs` | `Token` enum, currency name list & regex |
 | `src/parser/parser.rs` | Tokens → AST (`Node`); grammar lives here |
@@ -38,24 +41,51 @@ raw string  ───▶  Lexer::parse  ───▶  [Token]  ───▶  Par
 | `src/number_op.rs` | Arithmetic on `Number`s with type promotion |
 | `src/rational.rs` | Exact `Rational` (num/den) with gcd normalization |
 | `src/unit.rs` | `Unit`/`UnitType` enums, conversion factors, `convert`, unit combining |
-| `src/currency.rs` | Live exchange-rate fetch (MNB SOAP), caching, conversion |
+| `src/currency/mod.rs` | Live exchange-rate fetch (MNB SOAP), caching, conversion |
 | `src/error.rs` | `CalcError` (via `thiserror`) |
-| `src/files.rs` | Platform cache-directory resolution |
+| `src/files.rs` | Platform cache- and config-directory resolution |
 | `src/debug.rs` | `Debug` impls for `Number` and `Node` (pretty-prints the AST) |
 
-## The two run modes (`main.rs`)
+## The two run modes (`repl.rs`)
 
-- **REPL** (no args): uses `rustyline` for line editing and persistent history
-  (`history.txt` in the cache dir). Input is fed to the parser **incrementally**
-  — each line's tokens are appended with `parser.extend(...)`, and `parser.parse()`
-  is retried after every line. It returns `None` while the expression is still
-  incomplete (e.g. an unclosed paren), and the prompt switches from `>> ` to
-  `.. ` to signal continuation. `Ctrl-C`/`Ctrl-D` cancels a partial expression
-  or, when the buffer is empty, exits.
-- **One-shot** (args present): `args[1..]` are joined with spaces, lexed,
-  parsed, evaluated, and printed once.
+`main.rs` only initializes config and chooses a mode; both live in `repl.rs` and
+share `evaluate_and_print` (eval → format with the current `FormatOptions` →
+print), so output behaviour is defined in exactly one place.
+
+- **REPL** (`repl::run`, no args): uses `rustyline` for line editing and
+  persistent history (`history.txt` in the cache dir). Input is fed to the parser
+  **incrementally** — each line's tokens are appended with `parser.extend(...)`,
+  and `parser.parse()` is retried after every line. It returns `None` while the
+  expression is still incomplete (e.g. an unclosed paren), and the prompt switches
+  from `>> ` to `.. ` to signal continuation. `Ctrl-C`/`Ctrl-D` cancels a partial
+  expression or, when the buffer is empty, exits.
+- **One-shot** (`repl::run_once`, args present): `args[1..]` are joined with
+  spaces, lexed, parsed, evaluated, and printed once.
 
 Both modes share the same lexer/parser/eval path; only input handling differs.
+
+## Configuration & `/config` meta-commands
+
+Config is loaded once at startup into a process-global `RwLock<Config>`
+(`config/mod.rs`); `config::current()` hands out a read guard and formatting reads
+from it. The on-disk file (`conf.toml` in the config dir, or `$CALC_CONFIG`) is
+bootstrapped from a commented template on first run.
+
+In the REPL, a line beginning with `/` is intercepted **before** lexing (a calc
+expression never starts with `/`) and routed to `handle_meta_command`:
+
+- `/config` — print every settable key and its current value.
+- `/config <key>` — print one key's value (`Hinter` also shows it inline as you
+  finish typing a known key).
+- `/config <key> <value>` — set it for this session (in-memory).
+- `/config global <key> <value>` — set **and** persist the merged config back to
+  the TOML file.
+
+The settable keys live in `config/registry.rs` as a `REGISTRY` table mapping a
+dotted path to a getter, a setter (with a value parser/validator), and the
+completion candidates. `rustyline` TAB completion walks this table one dot-level
+at a time; unknown keys and bad values produce a clear message and the loop
+continues.
 
 ## Error handling
 

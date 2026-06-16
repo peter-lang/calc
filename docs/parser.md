@@ -94,7 +94,7 @@ all it can.
 - **Bare unit as `atom`.** A unit by itself parses as the value `1 <unit>`, so
   `EUR to USD` means "1 EUR to USD".
 - **`ans`.** `Parser` carries `ans: Value`, initialized to `0` and updated by
-  `set_ans` (called from `main.rs`) after each successful eval. When `atom`
+  `set_ans` (called from `repl.rs`) after each successful eval. When `atom`
   sees `KwAns` it immediately substitutes `Node::Value(self.ans.clone())`, so
   `ans` is resolved at parse time and `eval()` sees only a plain value. Eval
   errors do not update `ans`.
@@ -121,8 +121,8 @@ pub enum FormatSpec {
 }
 ```
 
-Defined in `config.rs` alongside `FormatOptions`. The spec is not attached to
-the `Node` or evaluated by `eval()` — it is purely a rendering hint. `main.rs`
+Defined in `config/mod.rs` alongside `FormatOptions`. The spec is not attached to
+the `Node` or evaluated by `eval()` — it is purely a rendering hint. `repl.rs`
 calls `config::apply_spec(&guard.format, &spec)` to produce a one-off
 `FormatOptions` that overrides `repr` (and the relevant precision field if `N`
 was given), then passes it to `format_value`. See [numbers.md](numbers.md).

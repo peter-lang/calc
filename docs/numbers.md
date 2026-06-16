@@ -59,7 +59,7 @@ Rules applied per operation:
 This is the layer to touch when changing **how exactness is preserved or when a
 fallback to float happens**.
 
-## Output formatting (`number.rs`, `value.rs`, `config.rs`)
+## Output formatting (`number.rs`, `value.rs`, `config/mod.rs`)
 
 Two entry points:
 
@@ -68,7 +68,7 @@ Two entry points:
   `format_number` and appends the unit name when present.
 
 `Display for Number` calls `format_number` with `config::current().format`.
-`main.rs` uses `format_value` so it can supply a per-expression `FormatOptions`
+`repl.rs` uses `format_value` so it can supply a per-expression `FormatOptions`
 built from the config + any `| formatter` clause override.
 
 ### `NumberRepr` and `FormatOptions`
@@ -121,7 +121,7 @@ before formatting unless `repr = Rational`.
 ### `| formatter [N]` — per-expression override
 
 A trailing `| formatter` clause overrides `repr` (and optionally precision) for
-that one result. `FormatSpec` is defined in `config.rs`; `apply_spec` clones the
+that one result. `FormatSpec` is defined in `config/mod.rs`; `apply_spec` clones the
 config `FormatOptions` and patches it:
 
 | Clause | `repr` set | Precision field |
@@ -132,7 +132,7 @@ config `FormatOptions` and patches it:
 | `\| rat` / `\| rational` | `Rational` | — |
 | `\| fin [N]` / `\| financial [N]` | `Financial` | `fin.precision` |
 
-See [parser.md](parser.md) for the grammar and how `main.rs` applies the spec.
+See [parser.md](parser.md) for the grammar and how `repl.rs` applies the spec.
 
 `debug.rs` defines `Debug for Number` delegating to `Display` so AST dumps use
 the same rendering.

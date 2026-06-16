@@ -25,7 +25,10 @@ impl RateProvider for StaticProvider {
 
     fn convert(&self, from: &str, to: &str) -> Result<Rational, CalcError> {
         let key = format!("{}/{}", from, to);
-        self.rates.get(&key).cloned().ok_or(CalcError::ConversionError)
+        self.rates
+            .get(&key)
+            .cloned()
+            .ok_or(CalcError::ConversionError)
     }
 }
 
