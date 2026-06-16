@@ -196,6 +196,41 @@ point.
   `git commit -m "$(cat <<EOF …)"` — command substitution is dynamic, so Claude
   Code can't match it against a stored permission and re-prompts every time.
 
+## Releasing
+
+Releases are cut by **pushing a version tag**; [`cargo-dist`](https://opensource.axo.dev/cargo-dist/)
+(config in `dist-workspace.toml`, CI in `.github/workflows/release.yml`) then
+builds binaries for macOS/Linux, publishes a GitHub Release, and pushes the
+Homebrew formula to the `peter-lang/homebrew-tap` tap.
+
+**Per release (manual steps):**
+
+1. Bump `version` in `Cargo.toml`; `cargo build` so `Cargo.lock` updates.
+2. **Regenerate the third-party license bundle** (deps may have changed) —
+   intentionally manual, since releases are infrequent:
+   ```
+   cargo about generate about.hbs -o THIRD-PARTY-LICENSES.html
+   ```
+   This file is committed and bundled into every release archive (dist `include`);
+   the accepted-license list lives in `about.toml`. See the dependency license
+   audit rationale below.
+3. Commit the version bump + regenerated `THIRD-PARTY-LICENSES.html`.
+4. Tag and push: `git tag vX.Y.Z` then `git push && git push origin vX.Y.Z`.
+5. Watch the `release.yml` run; verify with `brew update && brew upgrade calc`
+   (or `brew install peter-lang/tap/calc`).
+
+**One-time / infrequent:** the tap repo `peter-lang/homebrew-tap` must exist
+(public); the `calc` repo needs a `HOMEBREW_TAP_TOKEN` secret (PAT with write
+access to the tap) and Actions "Read and write" workflow permissions. When
+upgrading dist, bump `cargo-dist-version` in `dist-workspace.toml` and rerun
+`dist generate`.
+
+**License compatibility:** `calc` is Apache-2.0; the whole dependency tree is
+permissive (MIT/Apache/BSD/ISC/BSL/Zlib/Unlicense/CDLA + ring's OpenSSL-style),
+no copyleft. `THIRD-PARTY-LICENSES.html` satisfies the attribution those
+licenses require for binary distribution. Adding a dependency under a new
+license means adding its SPDX id to `about.toml`'s `accepted` list.
+
 ## When in doubt, read the design docs
 
 Pull up the matching doc before changing these areas:
